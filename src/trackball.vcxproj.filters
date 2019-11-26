@@ -31,9 +31,6 @@
     <ClInclude Include="cgut.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="planet.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="cube.h">
       <Filter>Source Files</Filter>
     </ClInclude>

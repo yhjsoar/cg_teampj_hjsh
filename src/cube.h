@@ -7,29 +7,64 @@ struct cube_t
 	vec3	center = vec3(0);		// 2D position for translation
 	float	radius = 100.0f;		// radius
 	vec4	color;				// RGBA color in [0,1]
+	int		block;
 	mat4	model_matrix;		// modeling transformation
 
 	// public functions
 	void	update(float t);
 };
 
+
 inline std::vector<cube_t> create_map()
 {
+	int arr_map[6][6][6] = {	{{2, 1, 1, 1, 1, 0}, {0, 0, 0, 0, 1, 1}, {1, 1, 1, 1, 0, 1}, {1, 0, 0, 1, 0, 0}, {0, 1, 1, 1, 0, 0}, {0, 0, 0, 0, 0, 0}},
+								{{0, 0, 0, 0, 0, 1}, {0, 1, 1, 1, 0, 0}, {0, 0, 1, 0, 1, 1}, {0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 1}, {0, 0, 0, 1, 1, 1}},
+								{{1, 1, 1, 1, 1, 1}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 0, 1, 0}, {0, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 1, 0, 0, 0}},
+								{{0, 0, 0, 0, 0, 0}, {0, 1, 1, 1, 0, 1}, {0, 0, 0, 0, 0, 1}, {1, 1, 1, 1, 0, 1}, {0, 1, 0, 1, 0, 1}, {0, 0, 0, 1, 1, 1}},
+								{{0, 0, 1, 1, 0, 0}, {0, 1, 0, 1, 1, 1}, {0, 0, 0, 0, 1, 0}, {0, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 0}},
+								{{0, 0, 1, 0, 0, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 1, 1, 2}} };
 	std::vector<cube_t> map;
 	cube_t c;
-	float distance = 10.0f;
-	vec3 cents[] = {vec3(distance, -distance, -distance), vec3(distance, 0, -distance), vec3(distance, distance, -distance),
-					vec3(0, -distance, -distance), vec3(0, 0, -distance), vec3(0, distance, -distance),
-					vec3(-distance, -distance, -distance), vec3(-distance, 0, -distance), vec3(-distance, distance, -distance),
-					vec3(distance, -distance, 0), vec3(distance, 0, 0), vec3(distance, distance, 0),
-					vec3(0, -distance, 0), vec3(0, 0, 0), vec3(0, distance, 0),
-					vec3(-distance, -distance, 0), vec3(-distance, 0, 0), vec3(-distance, distance, 0),
-					vec3(distance, -distance, distance), vec3(distance, 0, distance), vec3(distance, distance, distance),
-					vec3(0, -distance, distance), vec3(0, 0, distance), vec3(0, distance, distance),
-					vec3(-distance, -distance, distance), vec3(-distance, 0, distance), vec3(-distance, distance, distance) };
-	for (int i = 0; i < 27; i++) {
-		c = { cents[i], distance, vec4(1, 1, 1,0.7f) };
-		map.emplace_back(c);
+	float distance = 7.5f;
+	float x, y, z;
+	int isleft, isright, isup, isdown, isfront, isback;
+	vec4 color;
+	int block;
+	for (int i = 0; i < 6; i++) {
+		for (int j = 0; j < 6; j++) {
+			for (int k = 0; k < 6; k++) {
+				z = distance * (2.5f - (float)i);
+				x = distance * (-2.5f + (float)j);
+				y = distance * (-2.5f + (float)k);
+				if (arr_map[i][j][k] == 2) color = { 1, 0, 0, 0.5f };
+				else if (arr_map[i][j][k] == 1) color = { 1, 1, 1, 0.5f };
+				else color = { 0, 0, 0, 0.5f };
+				if (k == 0 || arr_map[i][j][k] == arr_map[i][j][k - 1])	isleft = 1;
+				else isleft = 0;
+				if (k == 5 || arr_map[i][j][k] != arr_map[i][j][k + 1]) isright = 1;
+				else isright = 0;
+				if (i == 0 || arr_map[i][j][k] != arr_map[i - 1][j][k]) isup = 1;
+				else isup = 0;
+				if (i == 5 || arr_map[i][j][k] != arr_map[i + 1][j][k]) isdown = 1;
+				else isdown = 0;
+				if (j == 5 || arr_map[i][j][k] != arr_map[i][j + 1][k]) isfront = 1;
+				else isfront = 0;
+				if (j == 0 || arr_map[i][j][k] != arr_map[i][j - 1][k]) isback = 1;
+				else isback = 0;
+				block = isback + isfront * 2 + isdown * 4 + isup * 8 + isright * 16 + isleft * 32;
+				if (arr_map[i][j][k] == 2) {
+					if (i == 0) {
+						block = 1 + 2 + 4 + 8 + 0 + 32;
+					}
+					else {
+						block = 1 + 2 + 4 + 8 + 16 + 0;
+					}
+				}
+				block--;
+				c = { vec3(x, y, z), distance, color, block };
+				map.emplace_back(c);
+			}
+		}
 	}
 	return map;
 }

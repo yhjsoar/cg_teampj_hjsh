@@ -9,10 +9,6 @@
 static const char*	window_name = "cgbase - trackball";
 static const char*	vert_shader_path = "../bin/shaders/trackball.vert";
 static const char*	frag_shader_path = "../bin/shaders/trackball.frag";
-//static const char*	mesh_vertex_path = "../bin/mesh/dragon.vertex.bin";
-//static const char*	mesh_index_path	= "../bin/mesh/dragon.index.bin";
-uint				NUM_TESS = 72;
-uint				NUM_THET = 36;
 
 //*******************************************************************
 // common structures
@@ -34,13 +30,13 @@ struct camera
 //*******************************************************************
 // window objects
 GLFWwindow*	window = nullptr;
-ivec2		window_size = ivec2( 720, 480 );	// initial window size
+ivec2		window_size = ivec2( 1200, 900 );	// initial window size
 
 //*******************************************************************
 // OpenGL objects
 GLuint	program			= 0;	// ID holder for GPU program
-GLuint	vertex_buffer[2] = { 0, 0 };
-GLuint	index_buffer[2] = { 0, 0 };
+GLuint	vertex_buffer[63] = { 0,  };
+GLuint	index_buffer[63] = { 0, };
 
 //GLuint	vertex_buffer_no_left = 0;
 //GLuint	index_buffer_no_left = 0;
@@ -63,15 +59,15 @@ vec3	save_u;
 vec3	save_v;
 vec3	save_n;
 auto	map = std::move(create_map());
-std::vector<uint> indices[2];
+std::vector<uint> indices[63];
+int		now = 0;
 //std::vector<uint> indices_no_left;
 //auto	circles = std::move(create_circles());
 struct { bool add = false, sub = false; operator bool() const { return add || sub; } } b; // flags of keys for smooth changes
 
 //*************************************
 // holder of vertices and indices of a unit circle
-std::vector<vertex>	unit_cube_vertices;
-std::vector<vertex> unit_noleft_vertices;
+std::vector<vertex>	unit_cube_vertices[63];
 
 //*******************************************************************
 // scene objects
@@ -98,33 +94,28 @@ void render()
 
 	// notify GL that we use our own program and buffers
 	glUseProgram( program );
-	if (vertex_buffer[0])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[0]);
-	if (index_buffer[0])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[0]);
+	if (vertex_buffer[33])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[33]);
+	if (index_buffer[33])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[33]);
 
 	// bind vertex attributes to your shader program
 	cg_bind_vertex_attributes( program );
 	float t = float(glfwGetTime());
 
-	int tmp = 0;
 	for (auto& c : map) {
-		if (tmp == 5) {
-			glUseProgram(program);
-			if (vertex_buffer[1])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[1]);
-			if (index_buffer[1])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[1]);
+		int block = c.block;
+		if (vertex_buffer[block])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[block]);
+		if (index_buffer[block])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[block]);
 
-			cg_bind_vertex_attributes(program);
-		}
+		cg_bind_vertex_attributes(program);
+		
 		c.update(t);
 		// update per-circle uniforms
 		GLint uloc;
 		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, c.color);	// pointer version
 		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, c.model_matrix);
 
-		if (tmp >= 5) {
-			glDrawElements(GL_TRIANGLES, indices[1].size(), GL_UNSIGNED_INT, nullptr);
-		}
-		else glDrawElements(GL_TRIANGLES, indices[0].size(), GL_UNSIGNED_INT, nullptr);
-		tmp++;
+		glDrawElements(GL_TRIANGLES, indices[block].size(), GL_UNSIGNED_INT, nullptr);
+
 	}
 
 	// swap front and back buffers, and display to screen
@@ -150,119 +141,80 @@ void print_help()
 	printf( "\n" );
 }
 
-std::vector<vertex> create_cube_vertices() {
+std::vector<vertex> create_cube_vertices(int isright, int isleft, int isup , int isdown, int isfront, int isback) {
+	printf("%d %d %d %d %d %d\n", isleft, isright, isup, isdown, isfront, isback);
 	std::vector<vertex> v;
 	float x[] = { 0.5, 0.5, -0.5, -0.5 };
 	float y[] = { -0.5, 0.5, 0.5, -0.5 };
-	int i;
-	//up
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(x[i], y[i], 0.5),
-			vec3(0, 0, 1),
-			vec2(1, -1)
-			});
-	}
-	//front
 	float y2[] = { -0.5, 0.5, 0.5, -0.5 };
 	float z2[] = { -0.5, -0.5, 0.5, 0.5 };
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(0.5, y2[i], z2[i]),
-			vec3(1, 0, 0),
-			vec2(1, 1)
-			});
-	}
-	//down
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(z2[i], y2[i], -0.5),
-			vec3(0, 0, -1),
-			vec2(-1, 1)
-			});
-	}
-	//back
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(-0.5, y2[i], -z2[i]),
-			vec3(-1, 0, 0),
-			vec2(-1, -1)
-			});
-	}
-	//left
 	float x3[] = { 0.5, -0.5, -0.5, 0.5 };
 	float z3[] = { -0.5, -0.5, 0.5, 0.5 };
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(x3[i], 0.5, z3[i]),
-			vec3(0, 1, 0),
-			vec2(1, 0)
-			});
+	int i;
+	//up
+	if (isup==1) {
+		for (i = 0; i < 4; i++) {
+			v.push_back({
+				vec3(x[i], y[i], 0.5),
+				vec3(0, 0, 1),
+				vec2(1, -1)
+				});
+		}
+	}
+	
+	//front
+	if (isfront==1) {
+		for (i = 0; i < 4; i++) {
+			v.push_back({
+				vec3(0.5, y2[i], z2[i]),
+				vec3(1, 0, 0),
+				vec2(1, 1)
+				});
+		}
+	}
+	//down
+	if (isdown==1) {
+		for (i = 0; i < 4; i++) {
+			v.push_back({
+				vec3(z2[i], y2[i], -0.5),
+				vec3(0, 0, -1),
+				vec2(-1, 1)
+				});
+		}
+	}
+	//back
+	if (isback==1) {
+		for (i = 0; i < 4; i++) {
+			v.push_back({
+				vec3(-0.5, y2[i], -z2[i]),
+				vec3(-1, 0, 0),
+				vec2(-1, -1)
+				});
+		}
+	}
+	//left
+	if (isleft==1) {
+		for (i = 0; i < 4; i++) {
+			v.push_back({
+				vec3(x3[i], 0.5, z3[i]),
+				vec3(0, 1, 0),
+				vec2(1, 0)
+				});
+		}
 	}
 	//right
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(-x3[i], -0.5, z3[i]),
-			vec3(0, -1, 0),
-			vec2(0, 1)
-			});
+	if (isright==1) {
+		for (i = 0; i < 4; i++) {
+			v.push_back({
+				vec3(-x3[i], -0.5, z3[i]),
+				vec3(0, -1, 0),
+				vec2(0, 1)
+				});
+		}
 	}
 	return v;
 }
 
-std::vector<vertex> create_cube_vertices_no_left() {
-	std::vector<vertex> v;
-	float x[] = { 0.5, 0.5, -0.5, -0.5 };
-	float y[] = { -0.5, 0.5, 0.5, -0.5 };
-	int i;
-	//up
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(x[i], y[i], 0.5),
-			vec3(0, 0, 1),
-			vec2(1, -1)
-			});
-	}
-	//front
-	float y2[] = { -0.5, 0.5, 0.5, -0.5 };
-	float z2[] = { -0.5, -0.5, 0.5, 0.5 };
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(0.5, y2[i], z2[i]),
-			vec3(1, 0, 0),
-			vec2(1, 1)
-			});
-	}
-	//down
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(z2[i], y2[i], -0.5),
-			vec3(0, 0, -1),
-			vec2(-1, 1)
-			});
-	}
-	//back
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(-0.5, y2[i], -z2[i]),
-			vec3(-1, 0, 0),
-			vec2(-1, -1)
-			});
-	}
-	//left
-	float x3[] = { 0.5, -0.5, -0.5, 0.5 };
-	float z3[] = { -0.5, -0.5, 0.5, 0.5 };
-
-	//right
-	for (i = 0; i < 4; i++) {
-		v.push_back({
-			vec3(-x3[i], -0.5, z3[i]),
-			vec3(0, -1, 0),
-			vec2(0, 1)
-			});
-	}
-	return v;
-}
 
 void update_vertex_buffer(const std::vector<vertex>& vertices, int what_buffer) {
 	// clear and create new buffers
@@ -320,6 +272,14 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_PAUSE) {
 			is_pause = !is_pause;
 			first_time = float(glfwGetTime());
+		}
+		else if (key == GLFW_KEY_I) {
+			now++;
+			now %= 63;
+			printf("now: %d\n", now+1);
+		}
+		else if (key == GLFW_KEY_O) {
+			cam = camera();
 		}
 	}
 }
@@ -463,13 +423,22 @@ bool user_init()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 	// load the mesh
-	unit_cube_vertices = std::move(create_cube_vertices());
-	unit_noleft_vertices = std::move(create_cube_vertices_no_left());
-
-	update_vertex_buffer(unit_cube_vertices, 0);
-	update_vertex_buffer(unit_noleft_vertices, 1);
-	//pMesh = cg_load_mesh( mesh_vertex_path, mesh_index_path );
-	//if(pMesh==nullptr){ printf( "Unable to load mesh\n" ); return false; }
+	int isleft, isright, isup, isdown, isfront, isback, tmp;
+	for (int i = 1; i < 64; i++) {
+		tmp = i;
+		isback = tmp % 2;
+		tmp = tmp / 2;
+		isfront = tmp % 2;
+		tmp = tmp / 2;
+		isdown = tmp % 2;
+		tmp = tmp / 2;
+		isup = tmp % 2;
+		tmp = tmp / 2;
+		isright = tmp % 2;
+		isleft = tmp / 2;
+		unit_cube_vertices[i-1] = std::move(create_cube_vertices(isleft, isright, isup, isdown, isfront, isback));
+		update_vertex_buffer(unit_cube_vertices[i-1], i-1);
+	}
 
 	return true;
 }

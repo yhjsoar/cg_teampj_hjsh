@@ -61,7 +61,6 @@
     <ClInclude Include="cgmath.h" />
     <ClInclude Include="cgut.h" />
     <ClInclude Include="cube.h" />
-    <ClInclude Include="planet.h" />
     <ClInclude Include="trackball.h" />
   </ItemGroup>
   <ItemGroup>
