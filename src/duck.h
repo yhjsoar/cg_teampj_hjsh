@@ -321,11 +321,33 @@ inline bool duck_t::update_gravity(float floor, float gravity) {
 	if (floor > next_z) {
 		next_z = floor;
 	}
-	if (next_z == floor) {
 
+	center.z = next_z;
+
+	mat4 scale_matrix =
+	{
+		radius, 0, 0, 0,
+		0, radius, 0, 0,
+		0, 0, radius, 0,
+		0, 0, 0, 1
+	};
+
+
+	mat4 translate_matrix =
+	{
+		1, 0, 0, center.x,
+		0, 1, 0, center.y,
+		0, 0, 1, center.z,
+		0, 0, 0, 1
+	};
+
+	model_matrix = translate_matrix * rotation_matrix * scale_matrix;
+
+	if (next_z == floor) {
+		return true;
 	}
 	else {
-
+		return false;
 	}
 }
 
