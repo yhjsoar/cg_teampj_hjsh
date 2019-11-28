@@ -58,11 +58,17 @@ vec3	save_at;
 vec3	save_u;
 vec3	save_v;
 vec3	save_n;
+int		command = 0;
+float	start_time = 0.0f;
+float	passed_time = 0.0f;
+int		tick = 30;
+int		now_tick = 0;
+int		double_rotate = 0;
+bool	rotate = false;
+float	tick_time = 0.006f;
+bool	key_lock = false;
 auto	map = std::move(create_map());
 std::vector<uint> indices[63];
-int		now = 0;
-//std::vector<uint> indices_no_left;
-//auto	circles = std::move(create_circles());
 struct { bool add = false, sub = false; operator bool() const { return add || sub; } } b; // flags of keys for smooth changes
 
 //*************************************
@@ -71,7 +77,6 @@ std::vector<vertex>	unit_cube_vertices[63];
 
 //*******************************************************************
 // scene objects
-//mesh*		pMesh = nullptr;
 camera		cam;
 trackball	tb;
 
@@ -100,6 +105,31 @@ void render()
 	// bind vertex attributes to your shader program
 	cg_bind_vertex_attributes( program );
 	float t = float(glfwGetTime());
+	passed_time = t - start_time;
+
+	if (key_lock) {
+		if (tick_time * now_tick <= passed_time && tick_time * (now_tick + 1) >= passed_time) {
+			now_tick++;
+			double_rotate = 1;
+			rotate = true;
+		}
+		else if ((now_tick + 1)*tick_time < passed_time) {
+			for (int k = 2;; k++) {
+				if ((now_tick + k) * tick_time >= passed_time) {
+					if (now_tick + k > tick) {
+						double_rotate = tick - now_tick;
+						now_tick = tick;
+					}
+					else {
+						now_tick += k;
+						double_rotate = k;
+					}
+					rotate = true;
+					break;
+				}
+			}
+		}
+	}
 
 	for (auto& c : map) {
 		int block = c.block;
@@ -108,7 +138,8 @@ void render()
 
 		cg_bind_vertex_attributes(program);
 		
-		c.update(t);
+		c.update(t, command, tick, rotate, double_rotate);
+
 		// update per-circle uniforms
 		GLint uloc;
 		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, c.color);	// pointer version
@@ -117,7 +148,14 @@ void render()
 		glDrawElements(GL_TRIANGLES, indices[block].size(), GL_UNSIGNED_INT, nullptr);
 
 	}
-
+	rotate = false;
+	if (key_lock) {
+		if (now_tick == tick) {
+			command = 0;
+			key_lock = false;
+		}
+	}
+	
 	// swap front and back buffers, and display to screen
 	glfwSwapBuffers( window );
 }
@@ -142,7 +180,6 @@ void print_help()
 }
 
 std::vector<vertex> create_cube_vertices(int isright, int isleft, int isup , int isdown, int isfront, int isback) {
-	printf("%d %d %d %d %d %d\n", isleft, isright, isup, isdown, isfront, isback);
 	std::vector<vertex> v;
 	float x[] = { 0.5, 0.5, -0.5, -0.5 };
 	float y[] = { -0.5, 0.5, 0.5, -0.5 };
@@ -215,7 +252,6 @@ std::vector<vertex> create_cube_vertices(int isright, int isleft, int isup , int
 	return v;
 }
 
-
 void update_vertex_buffer(const std::vector<vertex>& vertices, int what_buffer) {
 	// clear and create new buffers
 	if (vertex_buffer[what_buffer])	glDeleteBuffers(1, &vertex_buffer[what_buffer]);	vertex_buffer[what_buffer] = 0;
@@ -273,13 +309,44 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 			is_pause = !is_pause;
 			first_time = float(glfwGetTime());
 		}
-		else if (key == GLFW_KEY_I) {
-			now++;
-			now %= 63;
-			printf("now: %d\n", now+1);
-		}
 		else if (key == GLFW_KEY_O) {
 			cam = camera();
+		}
+		else if (key == GLFW_KEY_UP) {
+			if (!key_lock) {
+				key_lock = true;
+				start_time = float(glfwGetTime());
+				passed_time = 0.0f;
+				now_tick = 0;
+				command = 1;
+			}
+		}
+		else if (key == GLFW_KEY_DOWN) {
+			if (!key_lock) {
+				key_lock = true;
+				start_time = float(glfwGetTime());
+				passed_time = 0.0f;
+				now_tick = 0;
+				command = 2;
+			}
+		}
+		else if (key == GLFW_KEY_LEFT) {
+			if (!key_lock) {
+				key_lock = true;
+				start_time = float(glfwGetTime());
+				passed_time = 0.0f;
+				now_tick = 0;
+				command = 3;
+			}
+		}
+		else if (key == GLFW_KEY_RIGHT) {
+			if (!key_lock) {
+				key_lock = true;
+				start_time = float(glfwGetTime());
+				passed_time = 0.0f;
+				now_tick = 0;
+				command = 4;
+			}
 		}
 	}
 }
