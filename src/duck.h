@@ -14,7 +14,8 @@ struct duck_t
 	// public functions
 	void	update_rotate(int command, bool rotate, int tick, int rotate_time, bool isBacking);
 	void	update_moving(bool move_up, bool move_down, bool move_left, bool move_right, float move_distance, std::vector<cube_t> maps);
-	bool	update_gravity(float floor, float gravity);
+	bool	update_gravity(std::vector<cube_t> maps, float gravity, float cube_size);
+	bool	check_if_on_floor(std::vector<cube_t> maps, float cube_size);
 };
 
 
@@ -138,6 +139,7 @@ inline void duck_t::update_rotate(int command, bool rotate, int tick, int rotate
 }
 
 inline void duck_t::update_moving(bool move_up, bool move_down, bool move_left, bool move_right, float move_distance, std::vector<cube_t> maps) {
+	printf("moving");
 	float next_x = center.x;
 	float next_y = center.y;
 
@@ -316,13 +318,12 @@ inline void duck_t::update_moving(bool move_up, bool move_down, bool move_left, 
 	model_matrix = translate_matrix * rotation_matrix * scale_matrix;
 }
 
-inline bool duck_t::update_gravity(float floor, float gravity) {
-	float next_z = center.z - gravity;
-	if (floor > next_z) {
-		next_z = floor;
-	}
-
-	center.z = next_z;
+inline bool duck_t::update_gravity(std::vector<cube_t> maps, float gravity, float cube_size) {
+	printf("start gravity - %f\n", center.z);
+	center.z = center.z - gravity;
+	printf("after gravity - %f\n", center.z);
+	bool result = check_if_on_floor(maps, cube_size);
+	printf("after check - %f\n", center.z);
 
 	mat4 scale_matrix =
 	{
@@ -343,12 +344,31 @@ inline bool duck_t::update_gravity(float floor, float gravity) {
 
 	model_matrix = translate_matrix * rotation_matrix * scale_matrix;
 
-	if (next_z == floor) {
-		return true;
-	}
-	else {
-		return false;
-	}
+	return result;
 }
 
+inline bool duck_t::check_if_on_floor(std::vector<cube_t> maps, float cube_size) {
+	if (center.z + radius < -cube_size * 2) {
+		if (center.z - radius == -cube_size * 3) return true;
+		if (center.z - radius < -cube_size * 3) {
+			center.z = -cube_size * 3 + radius;
+			return true;
+		}
+		return false;
+	}
+	for (auto& c : maps) {
+		if (c.type == 1 || c.type == 2) continue;
+		if (c.center.x + c.radius / 2 <= center.x - radius || c.center.x - c.radius / 2 >= center.x + radius)	continue;
+		if (c.center.y + c.radius / 2 <= center.y - radius || c.center.y - c.radius / 2 >= center.y + radius)	continue;
+		if (c.center.z - c.radius / 2 >= center.z + radius) continue;
+		//if (c.center.z + c.radius / 2 <= center.z - radius || c.center.z - c.radius / 2 >= center.z + radius)	continue;
+		if (c.center.z + c.radius / 2 >= center.z - radius) {
+			printf("c.center.z + c.radius / 2 : %f\n", c.center.z + c.radius);
+			printf("center.z - radius: %f\n", center.z - radius);
+			center.z = c.center.z + c.radius / 2 + radius;
+			return true;
+		}
+	}
+	return false;
+}
 #endif

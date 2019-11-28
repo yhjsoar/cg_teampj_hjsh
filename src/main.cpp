@@ -73,6 +73,7 @@ bool	move_right = false;
 bool	move_up = false;
 bool	move_down = false;
 bool	cube_rotate_done = true;
+bool	gravity_on = false;
 float	last_time;
 float	now_time = float(glfwGetTime());
 auto	map = std::move(create_map(cube_distance));
@@ -148,8 +149,21 @@ void render()
 	if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
 	cg_bind_vertex_attributes(program);
 	if (rotate) character.update_rotate(command, rotate, tick, double_rotate, cube_rotate_done);
-	else character.update_moving(move_up, move_down, move_left, move_right, 10.0f * (now_time - last_time), map);
-
+	else {
+		if (gravity_on) {
+			gravity_on = character.check_if_on_floor(map, cube_distance);
+			start_time = now_time;
+		}
+		if (!gravity_on) {
+			key_lock = true;
+			printf("passed_time: %f\n", passed_time);
+			gravity_on = character.update_gravity(map, passed_time/10, cube_distance);
+			if (gravity_on) key_lock = false;
+		}
+		else {
+			character.update_moving(move_up, move_down, move_left, move_right, 10.0f * (now_time - last_time), map);
+		}
+	}
 	char_center = character.center;
 	GLint uloc;
 	uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
