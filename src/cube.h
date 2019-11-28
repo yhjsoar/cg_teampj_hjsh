@@ -39,9 +39,9 @@ inline std::vector<cube_t> create_map()
 		0, 0, 1, 0,
 		0, 0, 0, 1
 	};
-	for (int i = 0; i < 6; i++) {
-		for (int j = 0; j < 6; j++) {
-			for (int k = 0; k < 6; k++) {
+	for (int i = 0; i < 1; i++) {
+		for (int j = 0; j < 1; j++) {
+			for (int k = 0; k < 1; k++) {
 				z = distance * (2.5f - (float)i);
 				x = distance * (-2.5f + (float)j);
 				y = distance * (-2.5f + (float)k);
