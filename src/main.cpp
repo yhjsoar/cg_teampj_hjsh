@@ -65,8 +65,19 @@ int		double_rotate = 0;
 bool	rotate = false;
 float	tick_time = 0.006f;
 bool	key_lock = false;
-auto	map = std::move(create_map());
-duck_t	character = create_character();
+float	cube_distance = 7.5f;
+int		map_size = 6;
+float	char_size = 2.0f;
+bool	move_left = false;
+bool	move_right = false;
+bool	move_up = false;
+bool	move_down = false;
+bool	cube_rotate_done = true;
+float	last_time;
+float	now_time = float(glfwGetTime());
+auto	map = std::move(create_map(cube_distance));
+duck_t	character = create_character(map_size, cube_distance, char_size);
+vec3	char_center = character.center;
 std::vector<uint> indices[63];
 std::vector<uint> char_indices;
 struct { bool add = false, sub = false; operator bool() const { return add || sub; } } b; // flags of keys for smooth changes
@@ -105,8 +116,9 @@ void render()
 
 	// bind vertex attributes to your shader program
 	cg_bind_vertex_attributes( program );
-	float t = float(glfwGetTime());
-	passed_time = t - start_time;
+	last_time = now_time;
+	now_time = float(glfwGetTime());
+	passed_time = now_time - start_time;
 
 	if (key_lock) {
 		if (tick_time * now_tick <= passed_time && tick_time * (now_tick + 1) >= passed_time) {
@@ -132,15 +144,42 @@ void render()
 		}
 	}
 
+	if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
+	if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
+	cg_bind_vertex_attributes(program);
+	if (rotate) character.update_rotate(command, rotate, tick, double_rotate, cube_rotate_done);
+	else character.update_moving(move_up, move_down, move_left, move_right, 10.0f * (now_time - last_time), map);
+
+	char_center = character.center;
+	GLint uloc;
+	uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
+	uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, character.color);	// pointer version
+	uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, character.model_matrix);
+
+	glDrawElements(GL_TRIANGLES, char_indices.size(), GL_UNSIGNED_INT, nullptr);
+
 	for (auto& c : map) {
 		int block = c.block;
-		if (vertex_buffer[block])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[block]);
-		if (index_buffer[block])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[block]);
+		//if (vertex_buffer[block])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[block]);
+		//if (index_buffer[block])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[block]);
+
+		if (vertex_buffer[62])	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer[62]);
+		if (index_buffer[62])	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer[62]);
 
 		cg_bind_vertex_attributes(program);
 		
-		c.update(t, command, tick, rotate, double_rotate);
-
+		if (rotate && cube_rotate_done) {
+			c.update(command, tick, false , double_rotate, char_center, char_size, cube_distance);
+		}
+		else if (rotate && !cube_rotate_done) {
+			c.update(command, tick, rotate, double_rotate, char_center, char_size, cube_distance);
+		}
+		else {
+			c.update(command, tick, rotate, double_rotate, char_center, char_size, cube_distance);
+		}
+		
+		//if (c.type == 0) continue;
+		if (c.color.w == 0.0f) continue;
 		// update per-circle uniforms
 		GLint uloc;
 		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
@@ -153,21 +192,21 @@ void render()
 	rotate = false;
 	if (key_lock) {
 		if (now_tick == tick) {
-			command = 0;
-			key_lock = false;
+			if ((command == 1 || command == 2) && !cube_rotate_done) {
+				cube_rotate_done = true;
+				command = 3 - command;
+				start_time = (float)glfwGetTime();
+				now_tick = 0;
+			}
+			else {
+				command = 0;
+				key_lock = false;
+			}
+			
 		}
 	}
 
-	if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
-	if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
-	cg_bind_vertex_attributes(program);
-	character.update(t, 3);
-	GLint uloc;
-	uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
-	uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, character.color);	// pointer version
-	uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, character.model_matrix);
-
-	glDrawElements(GL_TRIANGLES, char_indices.size(), GL_UNSIGNED_INT, nullptr);
+	
 	
 	// swap front and back buffers, and display to screen
 	glfwSwapBuffers( window );
@@ -295,19 +334,53 @@ void update_character_vertex_buffer(const std::vector<vertex>& vertices)
 
 void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 {
-	if(action==GLFW_PRESS)
+	if (key == GLFW_KEY_UP) {
+		if (action == GLFW_PRESS) {
+			if (!move_down && !key_lock) {
+				move_up = true;
+			}
+		}
+		else if (action == GLFW_RELEASE) {
+			move_up = false;
+		}
+	}
+	else if (key == GLFW_KEY_LEFT) {
+		if (action == GLFW_PRESS) {
+			if (!move_right && !key_lock) {
+				move_left = true;
+			}
+		}
+		else if (action == GLFW_RELEASE) {
+			move_left = false;
+		}
+	}
+	else if (key == GLFW_KEY_RIGHT) {
+		if (action == GLFW_PRESS) {
+			if (!move_left && !key_lock) {
+				move_right = true;
+			}
+		}
+		else if (action == GLFW_RELEASE) {
+			move_right = false;
+		}
+	}
+	else if (key == GLFW_KEY_DOWN) {
+		if (action == GLFW_PRESS) {
+			if (!move_up && !key_lock) {
+				move_down = true;
+			}
+		}
+		else if (action == GLFW_RELEASE) {
+			move_down = false;
+		}
+	}
+	else if(action==GLFW_PRESS)
 	{
 		if(key==GLFW_KEY_ESCAPE||key==GLFW_KEY_Q)	glfwSetWindowShouldClose( window, GL_TRUE );
 		else if(key==GLFW_KEY_H||key==GLFW_KEY_F1)	print_help();
 		else if (key == GLFW_KEY_HOME) {
 			cam = camera();
 		}
-		/*else if (key == GLFW_KEY_W)
-		{
-			b_wireframe = !b_wireframe;
-			glPolygonMode(GL_FRONT_AND_BACK, b_wireframe ? GL_LINE : GL_FILL);
-			printf("> using %s mode\n", b_wireframe ? "wireframe" : "solid");
-		}*/
 		else if (key == GLFW_KEY_PAUSE) {
 			is_pause = !is_pause;
 			first_time = float(glfwGetTime());
@@ -318,6 +391,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_W) {
 			if (!key_lock) {
 				key_lock = true;
+				cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
@@ -327,6 +401,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_S) {
 			if (!key_lock) {
 				key_lock = true;
+				cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
@@ -336,6 +411,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_A) {
 			if (!key_lock) {
 				key_lock = true;
+				cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
@@ -345,6 +421,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_D) {
 			if (!key_lock) {
 				key_lock = true;
+				cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
@@ -390,6 +467,7 @@ bool user_init()
 	glEnable( GL_DEPTH_TEST );								// turn on depth tests
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 
 	// load the mesh
 	int isleft, isright, isup, isdown, isfront, isback, tmp;

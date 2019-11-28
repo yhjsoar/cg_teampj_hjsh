@@ -8,16 +8,17 @@ struct cube_t
 	float	radius = 100.0f;		// radius
 	vec4	color;				// RGBA color in [0,1]
 	int		block;
+	int		type;
 
 	mat4	rotation_matrix;
 	mat4	model_matrix;		// modeling transformation
 
 	// public functions
-	void	update(float t, int command, int tick, bool rotate, int rotate_time);
+	void	update(int command, int tick, bool rotate, int rotate_time, vec3 char_center, float char_size, float block_size);
 };
 
 
-inline std::vector<cube_t> create_map()
+inline std::vector<cube_t> create_map(float distance)
 {
 	int arr_map[6][6][6] = {	{{2, 1, 1, 1, 1, 0}, {0, 0, 0, 0, 1, 1}, {1, 1, 1, 1, 0, 1}, {1, 0, 0, 1, 0, 0}, {0, 1, 1, 1, 0, 0}, {0, 0, 0, 0, 0, 0}},
 								{{0, 0, 0, 0, 0, 1}, {0, 1, 1, 1, 0, 0}, {0, 0, 1, 0, 1, 1}, {0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 1}, {0, 0, 0, 1, 1, 1}},
@@ -27,7 +28,6 @@ inline std::vector<cube_t> create_map()
 								{{0, 0, 1, 0, 0, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 1, 1, 2}} };
 	std::vector<cube_t> map;
 	cube_t c;
-	float distance = 7.5f;
 	float x, y, z;
 	int isleft, isright, isup, isdown, isfront, isback;
 	vec4 color;
@@ -39,9 +39,9 @@ inline std::vector<cube_t> create_map()
 		0, 0, 1, 0,
 		0, 0, 0, 1
 	};
-	for (int i = 0; i < 1; i++) {
-		for (int j = 0; j < 1; j++) {
-			for (int k = 0; k < 1; k++) {
+	for (int i = 0; i < 6; i++) {
+		for (int j = 0; j < 6; j++) {
+			for (int k = 0; k < 6; k++) {
 				z = distance * (2.5f - (float)i);
 				x = distance * (-2.5f + (float)j);
 				y = distance * (-2.5f + (float)k);
@@ -70,7 +70,7 @@ inline std::vector<cube_t> create_map()
 					}
 				}
 				block--;
-				c = { vec3(x, y, z), distance, color, block, rotation_matrix};
+				c = { vec3(x, y, z), distance, color, block, arr_map[i][j][k], rotation_matrix};
 				map.emplace_back(c);
 			}
 		}
@@ -78,7 +78,7 @@ inline std::vector<cube_t> create_map()
 	return map;
 }
 
-inline void cube_t::update(float t, int command, int tick, bool rotate, int rotate_time)
+inline void cube_t::update(int command, int tick, bool rotate, int rotate_time, vec3 char_center, float char_size, float block_size)
 {
 	// these transformations will be explained in later transformation lecture
 	if (command == 1 && rotate) {
@@ -152,6 +152,15 @@ inline void cube_t::update(float t, int command, int tick, bool rotate, int rota
 			0, 0, 0, 1
 		};
 		rotation_matrix = rotation_matrix_z * rotation_matrix;
+	}
+	if (center.x - block_size / 2 >= char_center.x + char_size) {
+		color.w = 0.0f;
+	}
+	else if (center.x + block_size/2 >= char_center.x - char_size) {
+		color.w = 0.5f;
+	}
+	else {
+		color.w = 1.0f;
 	}
 
 	mat4 scale_matrix =
