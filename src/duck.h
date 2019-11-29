@@ -84,7 +84,7 @@ inline void duck_t::update_rotate(int command, bool rotate, int tick, int rotate
 			float theta = atan2(center.z, center.x);
 			float after_theta = theta - PI / 2 / (float)tick * (float)rotate_time;
 			center.x = dist * cos(after_theta);
-			center.z = dist * sin(after_theta);
+			center.z = dist * sin(after_theta);`````````````````````
 		}
 		float thet = PI / 2 / (float)tick * (float)rotate_time;
 		float cos_y = cos(thet), sin_y = sin(thet);*/
