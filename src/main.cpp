@@ -65,14 +65,14 @@ int		double_rotate = 0;
 bool	rotate = false;
 float	tick_time = 0.006f;
 bool	key_lock = false;
-float	cube_distance = 7.5f;
-int		map_size = 6;
+float	cube_distance = 15.0f;
+int		map_size = 2;
 float	char_size = 2.0f;
 bool	move_left = false;
 bool	move_right = false;
 bool	move_up = false;
 bool	move_down = false;
-bool	cube_rotate_done = true;
+//bool	cube_rotate_done = true;
 bool	gravity_on = false;
 float	last_time;
 float	now_time = float(glfwGetTime());
@@ -148,7 +148,7 @@ void render()
 	if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
 	if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
 	cg_bind_vertex_attributes(program);
-	if (rotate) character.update_rotate(command, rotate, tick, double_rotate, cube_rotate_done);
+	if (rotate) character.update_rotate(command, rotate, tick, double_rotate, false, cube_distance);
 	else {
 		if (gravity_on) {
 			gravity_on = character.check_if_on_floor(map, cube_distance);
@@ -157,7 +157,7 @@ void render()
 		if (!gravity_on) {
 			key_lock = true;
 			printf("passed_time: %f\n", passed_time);
-			gravity_on = character.update_gravity(map, passed_time/10, cube_distance);
+			gravity_on = character.update_gravity(map, passed_time/3, cube_distance);
 			if (gravity_on) key_lock = false;
 		}
 		else {
@@ -182,10 +182,10 @@ void render()
 
 		cg_bind_vertex_attributes(program);
 		
-		if (rotate && cube_rotate_done) {
+		/*if (rotate && cube_rotate_done) {
 			c.update(command, tick, false , double_rotate, char_center, char_size, cube_distance);
 		}
-		else if (rotate && !cube_rotate_done) {
+		else */if (rotate) {
 			c.update(command, tick, rotate, double_rotate, char_center, char_size, cube_distance);
 		}
 		else {
@@ -206,16 +206,16 @@ void render()
 	rotate = false;
 	if (key_lock) {
 		if (now_tick == tick) {
-			if ((command == 1 || command == 2) && !cube_rotate_done) {
+			/*if ((command == 1 || command == 2) && !cube_rotate_done) {
 				cube_rotate_done = true;
 				command = 3 - command;
 				start_time = (float)glfwGetTime();
 				now_tick = 0;
 			}
-			else {
+			else {*/
 				command = 0;
 				key_lock = false;
-			}
+			//}
 			
 		}
 	}
@@ -402,7 +402,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_O) {
 			cam = camera();
 		}
-		else if (key == GLFW_KEY_W) {
+		/*else if (key == GLFW_KEY_W) {
 			if (!key_lock) {
 				key_lock = true;
 				cube_rotate_done = false;
@@ -411,11 +411,11 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 				now_tick = 0;
 				command = 1;
 			}
-		}
+		}*/
 		else if (key == GLFW_KEY_S) {
 			if (!key_lock) {
 				key_lock = true;
-				cube_rotate_done = false;
+				///cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
@@ -425,7 +425,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_A) {
 			if (!key_lock) {
 				key_lock = true;
-				cube_rotate_done = false;
+				//cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
@@ -435,7 +435,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_D) {
 			if (!key_lock) {
 				key_lock = true;
-				cube_rotate_done = false;
+				//cube_rotate_done = false;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
 				now_tick = 0;
