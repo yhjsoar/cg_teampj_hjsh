@@ -188,7 +188,7 @@ std::vector<vertex> create_character_vertices()
 	return v;
 }
 
-std::vector<vertex> create_character_vertices_left_front()
+std::vector<vertex> create_character_vertices_right_front()
 {
 	std::vector<vertex> v;
 	//HEAD
@@ -232,24 +232,24 @@ std::vector<vertex> create_character_vertices_left_front()
 	v.push_back({ vec3((float)-0.3,(float)0.0,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
 
 	//RIGHT FOOT
-	v.push_back({ vec3((float)0.4,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.4,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.4,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.4,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({ vec3((float)0.4, -0.225f * sqrtf(3) - 0.15f,0.05f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.1, -0.225f * sqrtf(3) - 0.15f,0.05f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.4, -0.225f * sqrtf(3) + 0.05f,0.05f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.1, -0.225f * sqrtf(3) + 0.05f,0.05f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.4, -0.175f * sqrtf(3) - 0.15f,0.1f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.1, -0.175f * sqrtf(3) - 0.15f,0.1f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.4, -0.175f * sqrtf(3) + 0.05f,0.1f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)0.1, -0.175f * sqrtf(3) + 0.05f,0.1f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
 
 	//LEFT FOOT
-	v.push_back({ vec3((float)-0.1,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.1,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.1,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.1,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({ vec3((float)-0.1, -0.25f * sqrtf(3) + 0.15f, 0.55f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.4, -0.25f * sqrtf(3) + 0.15f, 0.55f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.1, -0.25f * sqrtf(3) - 0.05f, 0.55f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.4, -0.25f * sqrtf(3) - 0.05f, 0.55f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.1, -0.2f * sqrtf(3) + 0.15f, 0.5f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.4, -0.2f * sqrtf(3) + 0.15f, 0.5f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.1, -0.2f * sqrtf(3) - 0.05f, 0.5f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)-0.4, -0.2f * sqrtf(3) - 0.05f, 0.5f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
 
 	//MOUTH
 	v.push_back({ vec3((float)0.3,(float)1.2,(float)1.3),vec3(1.0,0.5,0.0),vec2(1,0) });
@@ -303,7 +303,7 @@ std::vector<vertex> create_character_vertices_left_front()
 	return v;
 }
 
-std::vector<vertex> create_character_vertices_right_front()
+std::vector<vertex> create_character_vertices_left_front()
 {
 	std::vector<vertex> v;
 	//HEAD
@@ -327,52 +327,45 @@ std::vector<vertex> create_character_vertices_right_front()
 	v.push_back({ vec3(-0.5,1.0,-1.0),vec3(1.0,1.0,0.0),vec2(1,1) });
 
 	//RIGHT LEG
-	v.push_back({ vec3((float)0.3,(float)-0.4,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.2,(float)-0.4,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.3,(float)-0.4,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.2,(float)-0.4,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)0.3, -0.175f*sqrtf(3),(float)0.575),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)0.2, -0.175f*sqrtf(3),(float)0.575),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)0.3, -0.2f*sqrtf(3), (float)0.5),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)0.2, -0.2f*sqrtf(3), (float)0.5),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)0.3,(float)0.0,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)0.2,(float)0.0,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)0.3,(float)0.0,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)0.2,(float)0.0,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)0.3, -0.175*sqrtf(3),(float)0.575),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)0.2, -0.175*sqrtf(3),(float)0.575),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)0.3, -0.2*sqrtf(3), (float)0.5),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)0.2, -0.2*sqrtf(3), (float)0.5),vec3(1.0,0.5,0.0),vec2(1,0) });
+	
 
 	//LEFT LEG
-	v.push_back({ vec3((float)-0.2,(float)-0.4,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.3,(float)-0.4,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.2,(float)-0.4,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.3,(float)-0.4,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({ vec3((float)-0.2, -0.175f * sqrtf(3),(float)0.225),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)-0.3, -0.175f*sqrtf(3),(float)0.225),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)-0.2, -0.2f*sqrtf(3), (float)0.1),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({vec3((float)-0.3, -0.2f*sqrtf(3), (float)0.1),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)-0.2,(float)0.0,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)-0.3,(float)0.0,(float)0.4),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)-0.2,(float)0.0,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
 	v.push_back({ vec3((float)-0.3,(float)0.0,(float)0.3),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({ vec3((float)-0.2, -0.175 * sqrtf(3),(float)0.225),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)-0.3, -0.175*sqrtf(3),(float)0.225),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)-0.2, -0.2*sqrtf(3), (float)0.1),vec3(1.0,0.5,0.0),vec2(1,0) });
-	//v.push_back({vec3((float)-0.3, -0.2*sqrtf(3), (float)0.1),vec3(1.0,0.5,0.0),vec2(1,0) });
 
 	//RIGHT FOOT
-	v.push_back({ vec3((float)0.4,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.4,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.4,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.4,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)0.1,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({ vec3((float)0.4, -0.25f * sqrtf(3) + 0.15f, 0.55f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.1, -0.25f * sqrtf(3) + 0.15f, 0.55f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.4, -0.25f * sqrtf(3) - 0.05f, 0.55f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.1, -0.25f * sqrtf(3) - 0.05f, 0.55f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.4, -0.2f * sqrtf(3) + 0.15f, 0.5f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.1, -0.2f * sqrtf(3) + 0.15f, 0.5f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.4, -0.2f * sqrtf(3) - 0.05f, 0.5f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
+	v.push_back({ vec3((float)0.1, -0.2f * sqrtf(3) - 0.05f, 0.5f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1,0) });
 
 	//LEFT FOOT
-	v.push_back({ vec3((float)-0.1,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.5,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.1,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.5,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.1,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.4,(float)0.6),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.1,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
-	v.push_back({ vec3((float)-0.4,(float)-0.4,(float)0.2),vec3(1.0,0.5,0.0),vec2(1,0) });
+	v.push_back({ vec3((float)-0.4, -0.225f * sqrtf(3) - 0.15f,0.05f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.1, -0.225f * sqrtf(3) - 0.15f,0.05f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.4, -0.225f * sqrtf(3) + 0.05f,0.05f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.1, -0.225f * sqrtf(3) + 0.05f,0.05f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.4, -0.175f * sqrtf(3) - 0.15f,0.1f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.1, -0.175f * sqrtf(3) - 0.15f,0.1f + 0.15f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.4, -0.175f * sqrtf(3) + 0.05f,0.1f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
+	v.push_back({ vec3((float)-0.1, -0.175f * sqrtf(3) + 0.05f,0.1f - 0.05f * sqrtf(3)), vec3(1.0, 0.5, 0.0), vec2(1, 0) });
 
 	//MOUTH
 	v.push_back({ vec3((float)0.3,(float)1.2,(float)1.3),vec3(1.0,0.5,0.0),vec2(1,0) });

@@ -44,6 +44,8 @@ GLuint	vertex_buffer = 0;
 GLuint	index_buffer = 0;
 GLuint	vertex_char_buffer = 0;
 GLuint	index_char_buffer = 0;
+GLuint	vertex_char_moving_buffer[4] = { 0, 0, 0, 0 };
+GLuint	index_char_moving_buffer[4] = { 0, 0, 0, 0 };
 
 //*******************************************************************
 // global variables
@@ -82,6 +84,9 @@ bool	rotate = false;													// is rotating
 // character moving variables
 bool	character_move_bool[4] = { false, false, false, false };		// left, right, up, down
 bool	character_move_key_waiting[4] = { false, false, false, false };	// left, right, up, down
+bool	moving = false;
+float	moving_start_time;
+int		indic = 0;
 
 // gravity
 bool	gravity_on = false;
@@ -91,12 +96,14 @@ vec3	char_center = character.center;
 // indices
 std::vector<uint> indices;
 std::vector<uint> char_indices;
+std::vector<uint> char_moving_indices[4];
 struct { bool add = false, sub = false; operator bool() const { return add || sub; } } b; // flags of keys for smooth changes
 
 //*************************************
 // holder of vertices and indices of a unit circle
 std::vector<vertex>	unit_cube_vertices;
 std::vector<vertex>	duck_vertices;
+std::vector<vertex> duck_moving_vertices[4];
 
 //*******************************************************************
 // scene objects
@@ -153,8 +160,22 @@ void render()
 			}
 		}
 
-		if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
-		if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
+		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3]) && !moving) {
+			moving = true;
+			moving_start_time = float(glfwGetTime());
+		} if (!(character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
+			moving = false;
+		}
+		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
+			indic++;
+			if (vertex_char_moving_buffer[indic/10%4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
+			if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+		}
+		else {
+			if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
+			if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
+			
+		}
 		cg_bind_vertex_attributes(program);
 
 		if (rotate) character.update_rotate(command, rotate, tick, double_rotate, false, cube_distance[stage - 1]);
@@ -340,6 +361,77 @@ void update_character_vertex_buffer(const std::vector<vertex>& vertices)
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * char_indices.size(), &char_indices[0], GL_STATIC_DRAW);
 }
 
+void update_moving_character_vertex_buffer(const std::vector<vertex>& vertices, int i)
+{
+	// clear and create new buffers
+	if (vertex_char_moving_buffer[i])	glDeleteBuffers(1, &vertex_char_moving_buffer[i]);	vertex_char_moving_buffer[i] = 0;
+	if (index_char_moving_buffer[i])	glDeleteBuffers(1, &index_char_moving_buffer[i]);	index_char_moving_buffer[i] = 0;
+
+	// check exceptions
+	if (vertices.empty()) { printf("[error] vertices is empty.\n"); return; }
+
+	// create buffers
+	for (int k = 0; k < 11; k++) {
+		char_moving_indices[i].push_back(1 + k * 8);
+		char_moving_indices[i].push_back(4 + 8 * k);
+		char_moving_indices[i].push_back(5 + 8 * k);
+
+		char_moving_indices[i].push_back(0 + 8 * k);
+		char_moving_indices[i].push_back(4 + 8 * k);
+		char_moving_indices[i].push_back(1 + 8 * k);
+
+		char_moving_indices[i].push_back(0 + 8 * k);
+		char_moving_indices[i].push_back(6 + 8 * k);
+		char_moving_indices[i].push_back(4 + 8 * k);
+
+		char_moving_indices[i].push_back(2 + 8 * k);
+		char_moving_indices[i].push_back(6 + 8 * k);
+		char_moving_indices[i].push_back(0 + 8 * k);
+
+		char_moving_indices[i].push_back(2 + 8 * k);
+		char_moving_indices[i].push_back(7 + 8 * k);
+		char_moving_indices[i].push_back(6 + 8 * k);
+
+		char_moving_indices[i].push_back(3 + 8 * k);
+		char_moving_indices[i].push_back(7 + 8 * k);
+		char_moving_indices[i].push_back(2 + 8 * k);
+
+		char_moving_indices[i].push_back(3 + 8 * k);
+		char_moving_indices[i].push_back(5 + 8 * k);
+		char_moving_indices[i].push_back(7 + 8 * k);
+
+		char_moving_indices[i].push_back(1 + 8 * k);
+		char_moving_indices[i].push_back(5 + 8 * k);
+		char_moving_indices[i].push_back(3 + 8 * k);
+
+		char_moving_indices[i].push_back(5 + 8 * k);
+		char_moving_indices[i].push_back(6 + 8 * k);
+		char_moving_indices[i].push_back(7 + 8 * k);
+
+		char_moving_indices[i].push_back(4 + 8 * k);
+		char_moving_indices[i].push_back(6 + 8 * k);
+		char_moving_indices[i].push_back(5 + 8 * k);
+
+		char_moving_indices[i].push_back(3 + 8 * k);
+		char_moving_indices[i].push_back(0 + 8 * k);
+		char_moving_indices[i].push_back(1 + 8 * k);
+
+		char_moving_indices[i].push_back(2 + 8 * k);
+		char_moving_indices[i].push_back(0 + 8 * k);
+		char_moving_indices[i].push_back(3 + 8 * k);
+	}
+	// generation of vertex buffer: use vertices as it is
+	glGenBuffers(1, &vertex_char_moving_buffer[i]);
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[i]);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertex) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+
+	// geneation of index buffer
+	glGenBuffers(1, &index_char_moving_buffer[i]);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[i]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint) * char_moving_indices[i].size(), &char_moving_indices[i][0], GL_STATIC_DRAW);
+}
+
+
 void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 {
 	if (key == GLFW_KEY_UP) {
@@ -505,8 +597,15 @@ bool user_init()
 	// load the mesh
 	unit_cube_vertices = std::move(create_cube_vertices());
 	update_vertex_buffer(unit_cube_vertices);
-	duck_vertices = std::move(create_character_vertices_left_front());
+	duck_vertices = std::move(create_character_vertices());
 	update_character_vertex_buffer(duck_vertices);
+	duck_moving_vertices[0] = std::move(create_character_vertices_left_front());
+	duck_moving_vertices[1] = std::move(create_character_vertices());
+	duck_moving_vertices[2] = std::move(create_character_vertices_right_front());
+	duck_moving_vertices[3] = std::move(create_character_vertices());
+	for (int i = 0; i < 4; i++) {
+		update_moving_character_vertex_buffer(duck_moving_vertices[i], i);
+	}
 
 	return true;
 }
