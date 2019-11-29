@@ -24,22 +24,22 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cgmath.h">
-      <Filter>hader</Filter>
+      <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="cgut.h">
-      <Filter>hader</Filter>
+      <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="cube.h">
-      <Filter>hader</Filter>
+      <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="duck.h">
-      <Filter>hader</Filter>
+      <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="index.h">
-      <Filter>hader</Filter>
+      <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="trackball.h">
-      <Filter>hader</Filter>
+      <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imconfig.h">
       <Filter>imgui</Filter>
@@ -78,11 +78,11 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{60d3376b-f101-447c-872a-905e4b703f71}</UniqueIdentifier>
     </Filter>
-    <Filter Include="hader">
-      <UniqueIdentifier>{fd66200a-ff0d-4ad5-a215-659cc454d4e7}</UniqueIdentifier>
-    </Filter>
     <Filter Include="imgui">
       <UniqueIdentifier>{3ece60c7-34bf-4595-8f9c-7399c4846b7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="header">
+      <UniqueIdentifier>{fd66200a-ff0d-4ad5-a215-659cc454d4e7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

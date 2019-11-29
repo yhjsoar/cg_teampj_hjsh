@@ -7,7 +7,6 @@ struct cube_t
 	vec3	center = vec3(0);		// 2D position for translation
 	float	radius = 100.0f;		// radius
 	vec4	color;				// RGBA color in [0,1]
-	int		block;
 	int		type;
 	float	save_z;
 	bool	reversing;
@@ -17,26 +16,18 @@ struct cube_t
 	mat4	model_matrix;		// modeling transformation
 
 	// public functions
-	void	update(int command, int tick, bool rotate, int rotate_time, vec3 char_center, float char_size, float block_size);
+	void	update(int command, int tick, int rotate_time, vec3 char_center, float char_size, float block_size);
 };
 
 
-inline std::vector<cube_t> create_map(float distance)
+inline std::vector<cube_t> create_map(float distance, int stage)
 {
-	int map_size = 2;
-	/*int arr_map[6][6][6] = {	{{2, 1, 1, 1, 1, 0}, {0, 0, 0, 0, 1, 1}, {1, 1, 1, 1, 0, 1}, {1, 0, 0, 1, 0, 0}, {0, 1, 1, 1, 0, 0}, {0, 0, 0, 0, 0, 0}},
-								{{0, 0, 0, 0, 0, 1}, {0, 1, 1, 1, 0, 0}, {0, 0, 1, 0, 1, 1}, {0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 1}, {0, 0, 0, 1, 1, 1}},
-								{{1, 1, 1, 1, 1, 1}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 0, 1, 0}, {0, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 1, 0, 0, 0}},
-								{{0, 0, 0, 0, 0, 0}, {0, 1, 1, 1, 0, 1}, {0, 0, 0, 0, 0, 1}, {1, 1, 1, 1, 0, 1}, {0, 1, 0, 1, 0, 1}, {0, 0, 0, 1, 1, 1}},
-								{{0, 0, 1, 1, 0, 0}, {0, 1, 0, 1, 1, 1}, {0, 0, 0, 0, 1, 0}, {0, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 0}},
-								{{0, 0, 1, 0, 0, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 1, 1, 3}} };*/
-	int arr_map[2][2][2] = { {{2, 1}, {0, 0}}, {{0, 1}, {0, 3}} };
-	std::vector<cube_t> map;
+	printf("making map: %d\n", stage);
+	int map_size = stage * 2;
 	cube_t c;
 	float x, y, z;
-	int isleft, isright, isup, isdown, isfront, isback;
 	vec4 color;
-	int block;
+	int i, j, k;
 	mat4 rotation_matrix =
 	{
 		1, 0, 0, 0,
@@ -44,71 +35,108 @@ inline std::vector<cube_t> create_map(float distance)
 		0, 0, 1, 0,
 		0, 0, 0, 1
 	};
-	for (int i = 0; i < map_size; i++) {
-		for (int j = 0; j < map_size; j++) {
-			for (int k = 0; k < map_size; k++) {
-				z = distance * (0.5f - (float)i);
-				x = distance * (-0.5f + (float)j);
-				y = distance * (-0.5f + (float)k);
-				if (arr_map[i][j][k] == 2) color = { 1, 0, 0, 1.0f };
-				else if (arr_map[i][j][k] == 1) color = { 1, 1, 1, 1.0f };
-				else if (arr_map[i][j][k] == 3) color = { 0, 0, 1, 1.0f };
-				else color = { 0, 0, 0, 1.0f };
-				if (k == 0 || arr_map[i][j][k] == arr_map[i][j][k - 1])	isleft = 1;
-				else isleft = 0;
-				if (k == map_size-1 || arr_map[i][j][k] != arr_map[i][j][k + 1]) isright = 1;
-				else isright = 0;
-				if (i == 0 || arr_map[i][j][k] != arr_map[i - 1][j][k]) isup = 1;
-				else isup = 0;
-				if (i == map_size-1 || arr_map[i][j][k] != arr_map[i + 1][j][k]) isdown = 1;
-				else isdown = 0;
-				if (j == map_size-1 || arr_map[i][j][k] != arr_map[i][j + 1][k]) isfront = 1;
-				else isfront = 0;
-				if (j == 0 || arr_map[i][j][k] != arr_map[i][j - 1][k]) isback = 1;
-				else isback = 0;
-				block = isback + isfront * 2 + isdown * 4 + isup * 8 + isright * 16 + isleft * 32;
-				if (arr_map[i][j][k] == 2) {
-					if (i == 0) {
-						block = 1 + 2 + 4 + 8 + 0 + 32;
+
+	std::vector<cube_t> map;
+
+	if (stage == 1) {
+		int arr_map[2][2][2] = { {{2, 1}, {0, 0}}, {{0, 1}, {0, 3}} };
+		for (i = 0; i < map_size; i++) {
+			for (j = 0; j < map_size; j++) {
+				for (k = 0; k < map_size; k++) {
+					z = distance * ((float)stage - 0.5f - (float)i);
+					x = distance * (-(float)stage + 0.5f + (float)j);
+					y = distance * (-(float)stage + 0.5f + (float)k);
+					switch (arr_map[i][j][k]) {
+					case 0:
+						color = { 0, 0, 0, 1.0f };
+						break;
+					case 1:
+						color = { 1, 1, 1, 1.0f };
+						break;
+					case 2:
+						color = { 1, 0, 0, 1.0f };
+						break;
+					case 3:
+						color = { 0, 0, 1, 1.0f };
 					}
-					else {
-						block = 1 + 2 + 4 + 8 + 16 + 0;
-					}
+					c = { vec3(x, y, z), distance, color, arr_map[i][j][k], z, false, 0, rotation_matrix };
+					map.emplace_back(c);
 				}
-				block--;
-				c = { vec3(x, y, z), distance, color, block, arr_map[i][j][k], z, false, 0, rotation_matrix};
-				map.emplace_back(c);
 			}
 		}
 	}
+	else if (stage == 2) {
+		int arr_map[4][4][4] = { { {2, 1, 1, 0}, {0, 0, 0, 0}, {1, 0, 1, 0}, {1, 1, 1, 1} },
+								{ {0, 0, 1, 1}, {0, 1, 1, 0}, {1, 0, 1, 0}, {0, 0, 0, 0}},
+								{{1, 0, 0, 0}, {1, 0, 0, 0}, {1, 0, 0, 0}, {1, 1, 1, 0}},
+								{{1, 1, 1, 1}, {0, 1, 0, 1}, {0, 1, 1, 1}, {0, 0, 0, 3}} };
+		for (i = 0; i < map_size; i++) {
+			for (j = 0; j < map_size; j++) {
+				for (k = 0; k < map_size; k++) {
+					z = distance * ((float)stage - 0.5f - (float)i);
+					x = distance * (-(float)stage + 0.5f + (float)j);
+					y = distance * (-(float)stage + 0.5f + (float)k);
+					switch (arr_map[i][j][k]) {
+					case 0:
+						color = { 0, 0, 0, 1.0f };
+						break;
+					case 1:
+						color = { 1, 1, 1, 1.0f };
+						break;
+					case 2:
+						color = { 1, 0, 0, 1.0f };
+						break;
+					case 3:
+						color = { 0, 0, 1, 1.0f };
+					}
+					c = { vec3(x, y, z), distance, color, arr_map[i][j][k], z, false, 0, rotation_matrix };
+					map.emplace_back(c);
+				}
+			}
+		}
+	} 
+	else if (stage == 3) {
+		int arr_map[6][6][6] = { {{2, 1, 1, 1, 1, 0}, {0, 0, 0, 0, 1, 1}, {1, 1, 1, 1, 0, 1}, {1, 0, 0, 1, 0, 0}, {0, 1, 1, 1, 0, 0}, {0, 0, 0, 0, 0, 0}},
+								{{0, 0, 0, 0, 0, 1}, {0, 1, 1, 1, 0, 0}, {0, 0, 1, 0, 1, 1}, {0, 0, 0, 0, 0, 1}, {0, 1, 0, 0, 0, 1}, {0, 0, 0, 1, 1, 1}},
+								{{1, 1, 1, 1, 1, 1}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 0, 1, 0}, {0, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 1, 0, 0, 0}},
+								{{0, 0, 0, 0, 0, 0}, {0, 1, 1, 1, 0, 1}, {0, 0, 0, 0, 0, 1}, {1, 1, 1, 1, 0, 1}, {0, 1, 0, 1, 0, 1}, {0, 0, 0, 1, 1, 1}},
+								{{0, 0, 1, 1, 0, 0}, {0, 1, 0, 1, 1, 1}, {0, 0, 0, 0, 1, 0}, {0, 0, 0, 0, 1, 0}, {0, 1, 0, 0, 1, 0}, {0, 1, 0, 0, 0, 0}},
+								{{0, 0, 1, 0, 0, 0}, {0, 1, 0, 0, 0, 0}, {1, 1, 0, 0, 0, 0}, {1, 0, 0, 0, 0, 0}, {1, 0, 0, 0, 1, 0}, {1, 1, 1, 1, 1, 3}} };
+		for (i = 0; i < map_size; i++) {
+			for (j = 0; j < map_size; j++) {
+				for (k = 0; k < map_size; k++) {
+					z = distance * ((float)stage - 0.5f - (float)i);
+					x = distance * (-(float)stage + 0.5f + (float)j);
+					y = distance * (-(float)stage + 0.5f + (float)k);
+					switch (arr_map[i][j][k]) {
+					case 0:
+						color = { 0, 0, 0, 1.0f };
+						break;
+					case 1:
+						color = { 1, 1, 1, 1.0f };
+						break;
+					case 2:
+						color = { 1, 0, 0, 1.0f };
+						break;
+					case 3:
+						color = { 0, 0, 1, 1.0f };
+					}
+					c = { vec3(x, y, z), distance, color, arr_map[i][j][k], z, false, 0, rotation_matrix };
+					map.emplace_back(c);
+				}
+			}
+		}
+	}
+	
 	return map;
 }
 
-inline void cube_t::update(int command, int tick, bool rotate, int rotate_time, vec3 char_center, float char_size, float block_size)
+inline void cube_t::update(int command, int tick, int rotate_time, vec3 char_center, float char_size, float block_size)
 {
 	// these transformations will be explained in later transformation lecture
-	if (command == 1 && rotate) {
-		//up
-		float dist = sqrt(center.x * center.x + center.z * center.z);
-		float theta = atan2(center.z, center.x);
-		float after_theta = theta + PI / 2 / (float)tick * (float)rotate_time;
-		center.x = dist * cos(after_theta);
-		center.z = dist * sin(after_theta);
-		float thet = -PI / 2 / (float)tick * (float)rotate_time;
-		float cos_y = cos(thet), sin_y = sin(thet);
-		mat4 rotation_matrix_y =
-		{
-			cos_y, 0, sin_y, 0,
-			0, 1, 0, 0,
-			-sin_y, 0, cos_y, 0,
-			0, 0, 0, 1
-		};
-		rotation_matrix = rotation_matrix_y * rotation_matrix;
-	}
-	else if (command == 2 && rotate) {
+	if (command == 2) {
 		//down
 		if (!reversing) {
-			printf("original z: %f\n", center.z);
 			save_z = -2 * center.z / (float)tick;
 			tick_time = 0;
 			reversing = true;
@@ -117,7 +145,7 @@ inline void cube_t::update(int command, int tick, bool rotate, int rotate_time, 
 		tick_time += rotate_time;
 		if (tick_time == tick) reversing = false;
 	}
-	else if (command == 3 && rotate) {
+	else if (command == 3) {
 		//left
 		float dist = sqrt(center.x * center.x + center.y * center.y);
 		float theta = atan2(center.y, center.x);
@@ -135,7 +163,7 @@ inline void cube_t::update(int command, int tick, bool rotate, int rotate_time, 
 		};
 		rotation_matrix = rotation_matrix_z * rotation_matrix;
 	}
-	else if (command == 4 && rotate) {
+	else if (command == 4) {
 		//right
 		float dist = sqrt(center.x * center.x + center.y * center.y);
 		float theta = atan2(center.y, center.x);
