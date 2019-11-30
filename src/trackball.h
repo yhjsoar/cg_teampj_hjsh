@@ -33,7 +33,7 @@ struct trackball
 		// project a 2D mouse position to a unit sphere
 		static const vec3 p0 = vec3(0,0,1.0f);	// reference position on sphere
 		vec3 p1 = vec3(m.x-m0.x, m0.y-m.y,0);	// displacement with vertical swap
-		if(!b_tracking||length(p1)<0.0001f) return view_matrix0;			// ignore subtle movement
+		if (!b_tracking || length(p1) < 0.0001f) return mat4{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };			// ignore subtle movement
 		p1 *= scale;														// apply rotation scale
 		p1 = vec3(p1.x,p1.y,sqrtf(max(0,1.0f-length2(p1)))).normalize();	// back-project z=0 onto the unit sphere
 
@@ -45,7 +45,7 @@ struct trackball
 		float angle = asin( min(n.length(),1.0f) );
 		rotation_angle = mat4::rotate(n.normalize(), angle);
 		// return resulting rotation matrix
-		return view_matrix0 * mat4::translate(at0) * rotation_angle * mat4::translate(-at0);
+		return rotation_angle;
 	}
 };
 

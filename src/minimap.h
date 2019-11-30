@@ -23,7 +23,7 @@ struct minimap_t {
 	mat4	finish_model_matrix;
 	mat4	duck_model_matrix;
 
-	void	update(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location);
+	void	update(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location, mat4 rotating_matrix, bool rotating);
 };
 
 minimap_t create_minimap() {
@@ -46,7 +46,7 @@ minimap_t create_minimap() {
 	return minimap;
 }
 
-inline void minimap_t::update(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location) {
+inline void minimap_t::update(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location, mat4 rotating_matrix, bool rotating) {
 	float cube_size = (float)stage * distance;
 	float map_size = radius/2;
 	float biyul = map_size / cube_size;
@@ -102,6 +102,8 @@ inline void minimap_t::update(int stage, float distance, vec3 start_location, ve
 		0, 0, 1, start_loc.z,
 		0, 0, 0, 1
 	};
+
+	if (rotating) rotation_matrix = rotating_matrix;
 
 	model_matrix = translate_matrix * rotation_matrix * scale_matrix;
 	start_model_matrix = start_translate_matrix * rotation_matrix * sphere_scale_matrix;
