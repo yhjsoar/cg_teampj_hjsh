@@ -2,8 +2,6 @@
 #ifndef __INDEX_H__
 #define __INDEX_H__
 
-
-
 std::vector<vertex> create_cube_vertices() {
 	std::vector<vertex> v;
 	float x[] = { 0.5, 0.5, -0.5, -0.5 };
@@ -300,6 +298,10 @@ std::vector<vertex> create_character_vertices_right_front()
 	v.push_back({ vec3((float)-0.55,(float)1.4,(float)0.4),vec3(1.0,1.0,0.0),vec2(0,0) });
 	v.push_back({ vec3((float)-0.5,(float)1.4,(float)0.3),vec3(1.0,1.0,0.0),vec2(0,0) });
 	v.push_back({ vec3((float)-0.55,(float)1.4,(float)0.3),vec3(1.0,1.0,0.0),vec2(0,0) });
+
+	for (int i = 0; i < (int)v.size(); i++) {
+		v.at(i).pos.y -= 0.1f;
+	}
 	return v;
 }
 
@@ -416,8 +418,56 @@ std::vector<vertex> create_character_vertices_left_front()
 	v.push_back({ vec3((float)-0.55,(float)1.4,(float)0.4),vec3(1.0,1.0,0.0),vec2(0,0) });
 	v.push_back({ vec3((float)-0.5,(float)1.4,(float)0.3),vec3(1.0,1.0,0.0),vec2(0,0) });
 	v.push_back({ vec3((float)-0.55,(float)1.4,(float)0.3),vec3(1.0,1.0,0.0),vec2(0,0) });
+	for (int i = 0; i < (int)v.size(); i++) {
+		v.at(i).pos.y -= 0.1f;
+	}
 	return v;
 }
 
+std::vector<vertex> create_sphere_vertices() {
+	uint N = 72;
+	uint M = 36;
+
+	std::vector<vertex> v; // origin
+	float x, y, z, p, s, cp, sp, cs, ss;
+	for (uint k = 0; k <= M; k++)
+	{
+		if (k == 0) {
+			p = 0, s = 0;
+			cp = cos(p), sp = sin(p), cs = cos(s), ss = sin(s);
+			x = ss * cp; y = ss * sp, z = cs;
+			v.push_back({
+				vec3(x, y, z),			// vertex position
+				vec3(x, y, z),		// normal vector facing your eye
+				vec2(p / (2.0f * PI), 1.0f - s / PI)		// texture coordinate in ([0, 1], [0, 1])
+				});
+		}
+		else if (k == M) {
+
+			p = 0, cp = cos(p), sp = sin(p);
+			s = PI * 1.0f, cs = cos(s), ss = sin(s);
+			x = ss * cp; y = ss * sp, z = cs;
+			v.push_back({
+				vec3(x, y, z),			// vertex position
+				vec3(x, y, z),		// normal vector facing your eye
+				vec2(p / (2.0f * PI), 1.0f - s / PI)		// texture coordinate in ([0, 1], [0, 1])
+				});
+		}
+		else {
+			s = PI * 1.0f * k / float(M), cs = cos(s), ss = sin(s);
+			for (uint j = 0; j <= N; j++) {
+				p = PI * 2.0f * j / float(N), cp = cos(p), sp = sin(p);
+				x = ss * cp; y = ss * sp, z = cs;
+
+				v.push_back({
+				vec3(x, y, z),			// vertex position
+				vec3(x, y, z),		// normal vector facing your eye
+				vec2(p / (2.0f * PI), 1.0f - s / PI)		// texture coordinate in ([0, 1], [0, 1])
+					});
+			}
+		}
+	}
+	return v;
+}
 
 #endif

@@ -6,7 +6,6 @@ struct duck_t
 {
 	vec3	center = vec3(0);		// 2D position for translation
 	float	radius = 100.0f;		// radius
-	vec4	color;				// RGBA color in [0,1]
 	float	save_z;
 	bool	reversing;
 	int		tick_time;
@@ -17,6 +16,7 @@ struct duck_t
 	// public functions
 	void	update_rotate(int command, bool rotate, int tick, int rotate_time, bool isBacking, float cube_size);
 	void	update_moving(bool move_up, bool move_down, bool move_left, bool move_right, float move_distance, std::vector<cube_t> maps, int stage, float cube_size);
+	void	update_moving_lobby(bool move_up, bool move_down, bool move_left, bool move_right, float move_distance, float lobby_size);
 	bool	update_gravity(std::vector<cube_t> maps, float gravity, float cube_size, int stage);
 	bool	check_if_on_floor(std::vector<cube_t> maps, float cube_size, int stage);
 	void	set_location(int stage, float cube_size, float char_size);
@@ -36,8 +36,27 @@ inline duck_t create_character(int map_size, float distance, float char_size, in
 		0, sin(PI / 2), cos(PI / 2), 0,
 		0, 0, 0, 1
 	};
-	duck_t duck = {vec3(x, y, z), char_size, vec4(1, 1, 0, 1.0f), z, false, 0, rotation_matrix};
+	duck_t duck = {vec3(x, y, z), char_size, z, false, 0, rotation_matrix};
 
+	return duck;
+}
+
+inline duck_t create_duck_lobby(float char_size) {
+	mat4 rotation_matrix =
+	{
+		1, 0, 0, 0,
+		0, cos(PI / 2), -sin(PI / 2), 0,
+		0, sin(PI / 2), cos(PI / 2), 0,
+		0, 0, 0, 1
+	};
+	mat4 rotation_matrix_z = {
+			cos(PI / 2), -sin(PI / 2), 0, 0,
+			sin(PI / 2), cos(PI / 2), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+	};
+	rotation_matrix = rotation_matrix_z * rotation_matrix;
+	duck_t duck = { vec3(0.0f, 0.0f, -10.0f), char_size, 0.0f, false, 0, rotation_matrix };
 	return duck;
 }
 
@@ -279,6 +298,182 @@ inline void duck_t::update_moving(bool move_up, bool move_down, bool move_left, 
 		}
 		
 	}
+	center.x = next_x;
+	center.y = next_y;
+
+	mat4 scale_matrix =
+	{
+		radius, 0, 0, 0,
+		0, radius, 0, 0,
+		0, 0, radius, 0,
+		0, 0, 0, 1
+	};
+
+
+	mat4 translate_matrix =
+	{
+		1, 0, 0, center.x,
+		0, 1, 0, center.y,
+		0, 0, 1, center.z,
+		0, 0, 0, 1
+	};
+
+	model_matrix = translate_matrix * rotation_matrix * scale_matrix;
+}
+
+inline void duck_t::update_moving_lobby(bool move_up, bool move_down, bool move_left, bool move_right, float move_distance, float lobby_size) {
+	float next_x = center.x;
+	float next_y = center.y;
+
+	if (move_up && move_left) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(-PI / 4), -sin(-PI / 4), 0, 0,
+			sin(-PI / 4), cos(-PI / 4), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_x -= move_distance / sqrtf(2);
+		next_y -= move_distance / sqrtf(2);
+	}
+	else if (move_up && move_right) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(-3 * PI / 4), -sin(-3 * PI / 4), 0, 0,
+			sin(-3 * PI / 4), cos(-3 * PI / 4), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_x -= move_distance / sqrtf(2);
+		next_y += move_distance / sqrtf(2);
+	}
+	else if (move_up) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(-PI / 2), -sin(-PI / 2), 0, 0,
+			sin(-PI / 2), cos(-PI / 2), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_x -= move_distance;
+	}
+	else if (move_down && move_left) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(PI / 4), -sin(PI / 4), 0, 0,
+			sin(PI / 4), cos(PI / 4), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_x += move_distance / sqrtf(2);
+		next_y -= move_distance / sqrtf(2);
+	}
+	else if (move_down && move_right) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(3 * PI / 4), -sin(3 * PI / 4), 0, 0,
+			sin(3 * PI / 4), cos(3 * PI / 4), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_x += move_distance / sqrtf(2);
+		next_y += move_distance / sqrtf(2);
+	}
+	else if (move_down) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(PI / 2), -sin(PI / 2), 0, 0,
+			sin(PI / 2), cos(PI / 2), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_x += move_distance;
+	}
+	else if (move_left) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		next_y -= move_distance;
+	}
+	else if (move_right) {
+		rotation_matrix =
+		{
+			1, 0, 0, 0,
+			0, cos(PI / 2), -sin(PI / 2), 0,
+			0, sin(PI / 2), cos(PI / 2), 0,
+			0, 0, 0, 1
+		};
+		mat4 rotation_matrix_z = {
+			cos(PI), -sin(PI), 0, 0,
+			sin(PI), cos(PI), 0, 0,
+			0, 0, 1, 0,
+			0, 0, 0, 1
+		};
+		rotation_matrix = rotation_matrix_z * rotation_matrix;
+		next_y += move_distance;
+	}
+
+	if (next_x != center.x || next_y != center.y) {
+		if (next_x >= lobby_size) {
+			next_x = lobby_size;
+		}
+		else if (next_x <= -lobby_size) {
+			next_x = -lobby_size;
+		}
+		if (next_y >= lobby_size) {
+			next_y = lobby_size;
+		}
+		else if (next_y <= -lobby_size) {
+			next_y = -lobby_size;
+		}
+	}
+
 	center.x = next_x;
 	center.y = next_y;
 

@@ -19,10 +19,8 @@ struct cube_t
 	void	update(int command, int tick, int rotate_time, vec3 char_center, float char_size, float block_size);
 };
 
-
 inline std::vector<cube_t> create_map(float distance, int stage)
 {
-	printf("making map: %d\n", stage);
 	int map_size = stage * 2;
 	cube_t c;
 	float x, y, z;
@@ -129,6 +127,52 @@ inline std::vector<cube_t> create_map(float distance, int stage)
 	}
 	
 	return map;
+}
+
+inline cube_t create_lobby(vec3 duck_center, float radius) {
+	cube_t cube;
+	float cube_x_y = radius * 10.0f;
+	float cube_z = 2.0f;
+	cube.center = vec3(duck_center.x, duck_center.y, duck_center.z - radius/2 -cube_z/2);
+	cube.color = vec4(1, 1, 1, 0.7f);
+
+	cube.rotation_matrix = 
+	{
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	};
+
+	mat4 scale_matrix =
+	{
+		cube_x_y, 0, 0, 0,
+		0, cube_x_y, 0, 0,
+		0, 0, cube_z, 0,
+		0, 0, 0, 1
+	};
+
+	mat4 translate_matrix =
+	{
+		1, 0, 0, cube.center.x,
+		0, 1, 0, cube.center.y,
+		0, 0, 1, cube.center.z,
+		0, 0, 0, 1
+	};
+
+	cube.model_matrix = translate_matrix * cube.rotation_matrix * scale_matrix;
+
+	return cube;
+}
+
+inline cube_t create_minimap(float distance, int stage) {
+	cube_t minimap;
+
+	minimap.center = vec3(0.0f, 0.0f, 0.0f);
+	minimap.radius = distance * stage * 2;
+	minimap.color = vec4(0.0f, 0.0f, 0.0f, 0.5f);
+
+	return minimap;
 }
 
 inline void cube_t::update(int command, int tick, int rotate_time, vec3 char_center, float char_size, float block_size)
