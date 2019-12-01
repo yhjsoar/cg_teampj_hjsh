@@ -33,11 +33,11 @@ minimap_t create_minimap() {
 	minimap_t minimap;
 	minimap.radius = 10.0f;
 	minimap.sphere_radius = 0.7f;
-	minimap.center = vec3(0.0f, 35.0f, 30.0f);
+	minimap.center = vec3(0.0f, 40.0f, 30.0f);
 	minimap.start_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 	minimap.finish_color = vec4(0.0f, 0.0f, 1.0f, 1.0f);
 	minimap.duck_color = vec4(1.0f, 1.0f, 0.0f, 1.0f);
-	minimap.color = vec4(0.0, 0.0, 0.0, 0.5f);
+	minimap.color = vec4(0.5f, 0.5f, 0.5f, 0.5f);
 
 	minimap.rotation_matrix = mat4{
 		1, 0, 0, 0,

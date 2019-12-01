@@ -134,7 +134,7 @@ inline cube_t create_lobby(vec3 duck_center, float radius) {
 	float cube_x_y = radius * 10.0f;
 	float cube_z = 2.0f;
 	cube.center = vec3(duck_center.x, duck_center.y, duck_center.z - radius/2 -cube_z/2);
-	cube.color = vec4(1, 1, 1, 0.7f);
+	cube.color = vec4(0.0f, 0.0f, 0.0f, 0.7f);
 
 	cube.rotation_matrix = 
 	{

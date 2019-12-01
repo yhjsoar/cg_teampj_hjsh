@@ -13,6 +13,23 @@
 
 #pragma comment(lib, "irrKlang.lib")
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include <stdio.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+#include <GL/gl3w.h>    // Initialize with gl3wInit()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
+#include <GL/glew.h>    // Initialize with glewInit()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+#include <glad/glad.h>  // Initialize with gladLoadGL()
+#else
+#include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#endif
+
 #define MAIN_SCENE 0
 #define GAME_SCENE 2
 #define	DUCK_SCENE 1
@@ -91,7 +108,7 @@ bool	b_wireframe = false;	// this is the default
 float	rotating_theta = 0.0f;
 int		num_solid_color = 0;			// use circle's color?
 bool	is_pause = false;
-int		scene_number = DUCK_SCENE;
+int		scene_number = MAIN_SCENE;
 
 // time informations
 float	last_time;
@@ -203,7 +220,70 @@ std::vector<vertex> sphere_vertices;
 camera		cam;
 trackball	tb;
 
+int my_image_width = 0;
+int my_image_height = 0;
+GLuint my_image_texture = 1;
+GLuint duck_key_image_texture = 1;
+GLuint spacebar_image_texture = 1;
+GLuint cube_key_image_texture = 1;
+GLuint start_image_texture = 1;
+GLuint option_image_texture = 1;
+GLuint end_image_texture = 1;
+GLuint gamename_image_texture = 1;
+GLuint how_image_texture = 1;
+GLuint restart_image_texture = 1;
+GLuint shift_image_texture = 1;
+
+//windows
+bool control_window = false;
+bool show_demo_window = false;
+bool show_another_window = false;
+bool choice_restart = false;
+bool choice_finish = false;
+bool choice_start = true;
+bool choice_option = true;
+bool choice_end = true;
+bool choice_how = true;
+bool gamename_window = true;
+bool	gamestart = false;
+ImVec4 clear_color = ImVec4(0.796f, 0.98f, 0.976f, 1.00f);
+
 //*******************************************************************
+static void glfw_error_callback(int error, const char* description)
+{
+	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
+}
+
+bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height)
+{
+	// Load from file
+	int image_width = 0;
+	int image_height = 0;
+	unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+	if (image_data == NULL)
+		return false;
+
+	// Create a OpenGL texture identifier
+	GLuint image_texture;
+	glGenTextures(1, &image_texture);
+	glBindTexture(GL_TEXTURE_2D, image_texture);
+
+	// Setup filtering parameters for display
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	// Upload pixels into texture
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image_width, image_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image_data);
+	stbi_image_free(image_data);
+
+	*out_texture = image_texture;
+	*out_width = image_width;
+	*out_height = image_height;
+
+	return true;
+}
+
 void minimap_reset() {
 	vec3 start_location, finish_location, duck_location;
 	duck_location = character.center;
@@ -219,7 +299,7 @@ void minimap_reset() {
 void game_reset() {
 	engine->stopAllSounds();
 	engine->play2D(mp3_lobby_src, true);
-	scene_number = DUCK_SCENE;
+	scene_number = MAIN_SCENE;
 	stage = 1;
 	character.set_location(stage, cube_distance[stage - 1], char_size);
 	minimap_reset();
@@ -248,6 +328,228 @@ void update()
 	uloc = glGetUniformLocation( program, "projection_matrix" );	if(uloc>-1) glUniformMatrix4fv( uloc, 1, GL_TRUE, cam.projection_matrix );
 }
 
+void guiupdate() {
+
+	ImGuiWindowFlags window_flags = 0;
+	window_flags |= ImGuiWindowFlags_NoTitleBar;
+	window_flags |= ImGuiWindowFlags_NoScrollbar;
+	window_flags |= ImGuiWindowFlags_NoResize;
+	window_flags |= ImGuiWindowFlags_NoBackground;
+	window_flags |= ImGuiWindowFlags_NoMove;
+
+	if (show_demo_window)
+
+		// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+	{
+		static float f = 1.0f;
+		static int counter = 0;
+
+		ImGui::Begin("Set option", &show_demo_window);                          // Create a window called "Hello, world!" and append into it.
+
+		ImGui::SliderFloat("Volume", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+		ImGui::ColorEdit3("Background color", (float*)& clear_color); // Edit 3 floats representing a color
+
+		mp3_src->setDefaultVolume(f * 0.5f);
+		mp3_back_src->setDefaultVolume(f * 0.2f);
+		mp3_lobby_src->setDefaultVolume(f * 0.2f);
+		wav_score_src->setDefaultVolume(f * 0.4f);
+		mp3_fail_src->setDefaultVolume(f * 0.5f);
+		mp3_complete_src->setDefaultVolume(f * 0.5f);
+		wav_button_src->setDefaultVolume(f * 0.5f);
+		engine->setSoundVolume(f);
+
+		ImGui::End();
+	}
+
+
+	if (control_window)
+	{
+		ImGui::Begin("How to Control", &control_window);
+		if (ImGui::CollapsingHeader("HOW TO CONTROL DUCK"))
+		{
+			ImGui::Text("\n");
+			ImGui::TextWrapped("You can control the duck using the keyboard orientation key!");
+
+			//ImGui::Text("pointer = %p", my_image_texture);
+			ImGui::Text("\n");
+			//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+			ImGui::Image((void*)(intptr_t)duck_key_image_texture, ImVec2(100.0f, 70.0f));
+			ImGui::Text("\n");
+			ImGui::BulletText(" LEFT : Make the duck move to the left.");
+			ImGui::BulletText(" RIGHT : Make the duck move to the right.");
+			ImGui::BulletText(" UP : Make the duck move forward.");
+			ImGui::BulletText(" DOWN : Make the duck move backward.");
+			ImGui::Text("\n");
+			ImGui::Separator();
+
+			ImGui::Text("\n");
+			ImGui::TextWrapped("You can make the sound using the keyboard spacebar key!");
+
+
+			//ImGui::Text("pointer = %p", my_image_texture);
+			ImGui::Text("\n");
+			//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+			ImGui::Image((void*)(intptr_t)spacebar_image_texture, ImVec2(150.0f, 24.0f));
+			ImGui::Text("\n");
+			ImGui::BulletText(" Spacebar : Make the duck quack.");
+			ImGui::Text("\n");
+			ImGui::Separator();
+
+			ImGui::Text("\n");
+			ImGui::TextWrapped("You can make the sound using the keyboard spacebar key!");
+
+
+			//ImGui::Text("pointer = %p", my_image_texture);
+			ImGui::Text("\n");
+			//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+			ImGui::Image((void*)(intptr_t)shift_image_texture, ImVec2(90.0f, 24.0f));
+			ImGui::Text("\n");
+			ImGui::BulletText(" Shift : Make the duck run fast.");
+			ImGui::Text("\n");
+		}
+
+		if (ImGui::CollapsingHeader("HOW TO CONTROL CUBE"))
+		{
+			ImGui::Text("\n");
+			ImGui::TextWrapped("You can control the cube using the keyboard A,S,D key!");
+
+			//ImGui::Text("pointer = %p", my_image_texture);
+			ImGui::Text("\n");
+			//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+			ImGui::Image((void*)(intptr_t)cube_key_image_texture, ImVec2(100.0f, 33.0f));
+			ImGui::Text("\n");
+			ImGui::BulletText(" A : Make the cube rotate to the left.");
+			ImGui::BulletText(" S : Make the cube reverse up and down.");
+			ImGui::BulletText(" D : Make the cube rotate to the right.");
+		}
+		ImGui::End();
+	}
+
+	// 3. Show another simple window.
+	if (show_another_window)
+	{
+		ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+		ImGui::Text("Hello from another window!");
+		if (ImGui::Button("Close Me"))
+			show_another_window = false;
+		ImGui::End();
+	}
+
+	if (choice_start) {
+		ImGui::Begin("Game Start!", &choice_start, window_flags);
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(80, 640), cond);
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)start_image_texture, ImVec2(500, 90));
+		ImGui::SameLine();
+		ImGui::Unindent();
+		if (ImGui::InvisibleButton("start", ImVec2(500, 90))) {
+			engine->play2D(wav_button_src, false);
+			scene_number = DUCK_SCENE;
+			cam_moving = true;
+			cam_start_time = float(glfwGetTime());
+			to_next_scene = false;
+			choice_start = false;
+			choice_option = false;
+			choice_end = false;
+			choice_how = false;
+			gamename_window = false;
+			choice_restart = false;
+			choice_finish = false;
+		}
+		ImGui::End();
+	}
+	if (choice_option) {
+		ImGui::Begin("Option", &choice_option, window_flags);
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(80, 750), cond);
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)option_image_texture, ImVec2(500, 90));
+		ImGui::SameLine();
+		ImGui::Unindent();
+		if (ImGui::InvisibleButton("option", ImVec2(500, 90))) {
+			engine->play2D(wav_button_src, false);
+			show_demo_window = true;
+		}
+		ImGui::End();
+	}
+	if (choice_how) {
+		ImGui::Begin("How", &choice_how, window_flags);
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(620, 750), cond);
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)how_image_texture, ImVec2(500, 90));
+		ImGui::SameLine();
+		ImGui::Unindent();
+		if (ImGui::InvisibleButton("how", ImVec2(500, 90))) {
+			engine->play2D(wav_button_src, false);
+			control_window = true;
+		}
+		ImGui::End();
+	}
+	if (choice_end) {
+		ImGui::Begin("Game End!", &choice_end, window_flags);
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(620, 640), cond);
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)end_image_texture, ImVec2(500, 90));
+		ImGui::SameLine();
+		ImGui::Unindent();
+		if (ImGui::InvisibleButton("game_end", ImVec2(500, 90))) {
+			engine->play2D(wav_button_src, false);
+			glfwSetWindowShouldClose(window, GL_TRUE);
+		}
+		ImGui::End();
+	}
+	if (choice_restart) {
+		ImGui::Begin("Restart the Game!", &choice_restart,window_flags);
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(80, 750), cond);
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)restart_image_texture, ImVec2(500, 90));
+		ImGui::SameLine();
+		ImGui::Unindent();
+		if (ImGui::InvisibleButton("game_restart", ImVec2(500, 90))) {
+			game_reset();
+			gamename_window = true;
+			choice_option = true;
+			choice_end = true;
+			choice_how = true;
+			choice_start = true;
+			control_window = false;
+			show_demo_window = false;
+			show_another_window = false;
+		}
+		ImGui::End();
+	}
+	if (choice_finish) {
+		ImGui::Begin("Game Finish!", &choice_finish, window_flags);
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(620, 750), cond);
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)end_image_texture, ImVec2(500, 90));
+		ImGui::SameLine();
+		ImGui::Unindent();
+		if (ImGui::InvisibleButton("game_finish", ImVec2(500, 90))) {
+			engine->play2D(wav_button_src, false);
+			glfwSetWindowShouldClose(window, GL_TRUE);
+		}
+		ImGui::End();
+	}
+	if (gamename_window) {
+		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+		ImGuiCond cond = 0;
+		ImGui::SetWindowPos(ImVec2(0, 0), cond);
+		ImGui::Begin("Game Name!", &gamename_window, window_flags);
+		ImGui::Text("\n");
+		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
+		ImGui::Image((void*)(intptr_t)gamename_image_texture, ImVec2(1050,560 ));
+
+		ImGui::End();
+	}
+}
+
+
 void render()
 {
 	// clear screen (with background color) and clear depth buffer
@@ -259,10 +561,29 @@ void render()
 	// notify GL that we use our own program and buffers
 	glUseProgram( program );
 	if (scene_number == MAIN_SCENE) {
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
 
+		guiupdate();
+
+		ImGui::Render();
+		int display_w, display_h;
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+		//glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 	else if (scene_number == GAME_SCENE) {
+		control_window = true;
 		// bind vertex attributes to your shader program
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		guiupdate();
+
 		if (stage_cam_moving) {
 			float theta = (-stage_cam_start_time + now_time) / stage_cam_duration_time * 3.0f * PI / 2.0f;
 			if (theta >= 3 * PI / 2) {
@@ -447,16 +768,18 @@ void render()
 		if (stage_get_time[stage - 1] >= stage_time[stage - 1]) stage_get_time[stage - 1] = stage_time[stage - 1];
 		if (stage_get_time[stage - 1] <= 0) stage_get_time[stage - 1] = 0;
 		std::string left_time = std::to_string(stage_get_time[stage-1]);
-		render_text(left_time, 500, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		render_text(left_time, 500, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 		if (stage_get_time[stage - 1] == 0) {
 			engine->play2D(mp3_fail_src, false);
 			complete_start_time = float(glfwGetTime());
+			control_window = false;
 			scene_number = STAGE_FAIL;		
 		}
 
 		if (stage_get_time[stage-1]!=0 && gravity_on && !rotate && character.isClear(map.at(stage - 1), stage)) {
 			engine->play2D(mp3_complete_src, false);
 			scene_number = STAGE_COMPLETE;
+			control_window = false;
 			complete_start_time = float(glfwGetTime());
 		}
 		rotate = false;
@@ -467,7 +790,13 @@ void render()
 			}
 		}
 
-		
+		ImGui::Render();
+		int display_w, display_h;
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+		//glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 	else if (scene_number == DUCK_SCENE) {
 		if (cam_moving) {
@@ -548,31 +877,31 @@ void render()
 			float diff_time = now_time - text_start;
 			if (diff_time >= 0.5f && diff_time <= 1.0f) {
 				float opacity = (diff_time - 0.5f) / 0.5f;
-				render_text("You can use Arrow Key to move your duck", 180, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, opacity));
+				render_text("You can use Arrow Key to move your duck", 180, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, opacity));
 			}
 			else if (diff_time > 1.0f && diff_time <= 2.0f) {
-				render_text("You can use Arrow Key to move your duck", 180, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				render_text("You can use Arrow Key to move your duck", 180, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 			} 
 			else if (diff_time > 2.0f && diff_time <= 2.5f) {
 				float opacity = (2.5f - diff_time) / 0.5f;
-				render_text("You can use Arrow Key to move your duck", 180, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, opacity));
+				render_text("You can use Arrow Key to move your duck", 180, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, opacity));
 			} 
 			else if (diff_time > 2.5f && diff_time <= 3.0f) {
 				float opacity = (diff_time - 2.5f) / 0.5f;
-				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, opacity));
+				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, opacity));
 			}
 			else if (!to_next_scene && diff_time > 3.0f && diff_time <= 3.8f) {
-				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 			} 
 			else if (!to_next_scene && diff_time > 3.8f) {
-				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 				float opacity = sinf((diff_time - 3.8f) * PI);
 				if (opacity < 0) opacity = -opacity;
-				render_text("Press space key to start", 380, 150, 0.6f, vec4(1.0f, 1.0f, 1.0f, opacity));
+				render_text("Press space key to start", 380, 150, 0.6f, vec4(0.0f, 0.0f, 0.0f, opacity));
 			}
 			if (to_next_scene && diff_time > 3.0f) {
 				float opacity = (to_next_time-0.2f - now_time + to_next_start) / (to_next_time-0.2f);
-				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, opacity));
+				render_text("If you press space key, duck will cry", 200, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, opacity));
 			}
 		}
 		
@@ -588,17 +917,17 @@ void render()
 			float size = diff_time / 1.0f * 2.0f;
 			GLuint text_x = GLuint( (800.0f + 440.0f)/2 - (800.0f - 440.0f) / 2 * diff_time / 1.0f);
 			GLuint text_y = GLuint( (415.0f + 480.0f)/2 + (480.0f - 415.0f) / 2 * diff_time / 1.0f);
-			render_text(str, text_x, text_y, size, vec4(1.0f, 1.0f, 1.0f, diff_time));
+			render_text(str, text_x, text_y, size, vec4(0.0f, 0.0f, 0.0f, diff_time));
 		}
 		else if (diff_time <= 1.7f) {
-			render_text(str, 440, 480, 2.0f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			render_text(str, 440, 480, 2.0f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
 		else if (diff_time < 2.2f) {
 			float opacity = (2.2f - diff_time) / 0.5f;
 			float size = (2.2f - diff_time) / 0.5f * 2.0f;
 			GLuint text_x = GLuint((800.0f + 440.0f) / 2 + (800.0f - 440.0f) / 2 * (diff_time- 2.2f) / 0.5f);
 			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (415.0f - 480.0f) / 2 * (diff_time - 2.2f) / 0.5f);
-			render_text(str, text_x, text_y, size, vec4(1.0f, 1.0f, 1.0f, diff_time));
+			render_text(str, text_x, text_y, size, vec4(0.0f, 0.0f, 0.0f, diff_time));
 		}
 		else if (diff_time >= 2.5f) {
 			scene_number = GAME_SCENE;
@@ -610,30 +939,6 @@ void render()
 	}
 	else if (scene_number == STAGE_COMPLETE) {
 	// bind vertex attributes to your shader program
-		if (stage_cam_moving) {
-			float theta = (-stage_cam_start_time + now_time) / stage_cam_duration_time * 3.0f * PI / 2.0f;
-			if (theta >= 3 * PI / 2) {
-				theta = 3 * PI / 2;
-				stage_cam_moving = false;
-				stage_cam_closer_moving = true;
-				stage_cam_closer_start_time = float(glfwGetTime());
-			}
-			float cam_y = cosf(theta) * 150.0f;
-			float cam_x = sinf(theta) * 150.0f;
-			cam.eye = vec3(-cam_x, cam_y, 0);
-			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
-			stage_time_start = float(glfwGetTime());
-		}
-		else if (stage_cam_closer_moving) {
-			float pass = (now_time - stage_cam_closer_start_time) / stage_cam_closer_duration_time * 50.0f;
-			if (pass >= 50.0f) {
-				pass = 50.0f;
-				stage_cam_closer_moving = false;
-			}
-			cam.eye = vec3(150.0f - pass, 0, 0);
-			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
-			stage_time_start = float(glfwGetTime());
-		}
 
 		passed_time = now_time - start_time;
 
@@ -794,7 +1099,7 @@ void render()
 		//if (stage_get_time[stage - 1] >= stage_time[stage - 1]) stage_get_time[stage - 1] = stage_time[stage - 1];
 		//if (stage_get_time[stage - 1] <= 0) stage_get_time[stage - 1] = 0;
 		std::string left_time = std::to_string(stage_get_time[stage-1]);
-		render_text(left_time, 500, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		render_text(left_time, 500, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
 		rotate = false;
 		if (key_lock) {
@@ -811,17 +1116,17 @@ void render()
 			float size = diff_time / 1.0f * 2.0f;
 			GLuint text_x = GLuint( (800.0f + 440.0f)/2 - (800.0f - 440.0f) / 2 * diff_time / 1.0f);
 			GLuint text_y = GLuint( (415.0f + 480.0f)/2 + (480.0f - 415.0f) / 2 * diff_time / 1.0f);
-			render_text(str, text_x, text_y, size, vec4(0.8f, 0.5f, 0.8f, diff_time));
+			render_text(str, text_x, text_y, size, vec4(0.5f, 0.5f, 0.5f, diff_time));
 		}
 		else if (diff_time <= 1.7f) {
-			render_text(str, 440, 480, 2.0f, vec4(0.8f, 0.5f, 0.8f, 1.0f));
+			render_text(str, 440, 480, 2.0f, vec4(0.5f, 0.5f, 0.5f, 1.0f));
 		}
 		else if (diff_time < 2.2f) {
 			float opacity = (2.2f - diff_time) / 0.5f;
 			float size = (2.2f - diff_time) / 0.5f * 2.0f;
 			GLuint text_x = GLuint((800.0f + 440.0f) / 2 + (800.0f - 440.0f) / 2 * (diff_time- 2.2f) / 0.5f);
 			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (415.0f - 480.0f) / 2 * (diff_time - 2.2f) / 0.5f);
-			render_text(str, text_x, text_y, size, vec4(0.8f, 0.5f, 0.8f, diff_time));
+			render_text(str, text_x, text_y, size, vec4(0.5f, 0.5f, 0.5f, diff_time));
 		}
 		else if (diff_time >= 2.5f) {
 			if (stage == 3) {
@@ -841,31 +1146,6 @@ void render()
 	}
 	else if (scene_number == STAGE_FAIL) {
 		// bind vertex attributes to your shader program
-		if (stage_cam_moving) {
-			float theta = (-stage_cam_start_time + now_time) / stage_cam_duration_time * 3.0f * PI / 2.0f;
-			if (theta >= 3 * PI / 2) {
-				theta = 3 * PI / 2;
-				stage_cam_moving = false;
-				stage_cam_closer_moving = true;
-				stage_cam_closer_start_time = float(glfwGetTime());
-			}
-			float cam_y = cosf(theta) * 150.0f;
-			float cam_x = sinf(theta) * 150.0f;
-			cam.eye = vec3(-cam_x, cam_y, 0);
-			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
-			stage_time_start = float(glfwGetTime());
-		}
-		else if (stage_cam_closer_moving) {
-			float pass = (now_time - stage_cam_closer_start_time) / stage_cam_closer_duration_time * 50.0f;
-			if (pass >= 50.0f) {
-				pass = 50.0f;
-				stage_cam_closer_moving = false;
-			}
-			cam.eye = vec3(150.0f - pass, 0, 0);
-			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
-			stage_time_start = float(glfwGetTime());
-		}
-
 		passed_time = now_time - start_time;
 
 		if (key_lock) {
@@ -1025,7 +1305,7 @@ void render()
 		if (stage_get_time[stage - 1] >= stage_time[stage - 1]) stage_get_time[stage - 1] = stage_time[stage - 1];
 		if (stage_get_time[stage - 1] <= 0) stage_get_time[stage - 1] = 0;
 		std::string left_time = std::to_string(stage_get_time[stage-1]);
-		render_text(left_time, 500, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		render_text(left_time, 500, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 
 		rotate = false;
 		if (key_lock) {
@@ -1043,17 +1323,17 @@ void render()
 			float size = diff_time / 1.0f * 2.0f;
 			GLuint text_x = GLuint((800.0f + 440.0f) / 2 - (800.0f - 440.0f) / 2 * diff_time / 1.0f);
 			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (480.0f - 415.0f) / 2 * diff_time / 1.0f);
-			render_text(str, text_x, text_y, size, vec4(1.0f, 1.0f, 1.0f, diff_time));
+			render_text(str, text_x, text_y, size, vec4(0.5f, 0.5f, 0.5f, diff_time));
 		}
 		else if (diff_time <= 1.7f) {
-			render_text(str, 440, 480, 2.0f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			render_text(str, 440, 480, 2.0f, vec4(0.5f, 0.5f, 0.5f, 1.0f));
 		}
 		else if (diff_time < 2.2f) {
 			float opacity = (2.2f - diff_time) / 0.5f;
 			float size = (2.2f - diff_time) / 0.5f * 2.0f;
 			GLuint text_x = GLuint((800.0f + 440.0f) / 2 + (800.0f - 440.0f) / 2 * (diff_time - 2.2f) / 0.5f);
 			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (415.0f - 480.0f) / 2 * (diff_time - 2.2f) / 0.5f);
-			render_text(str, text_x, text_y, size, vec4(1.0f, 1.0f, 1.0f, diff_time));
+			render_text(str, text_x, text_y, size, vec4(0.5f, 0.5f, 0.5f, diff_time));
 		}
 		else if (diff_time >= 2.5f) {
 			engine->stopAllSounds();
@@ -1063,6 +1343,11 @@ void render()
 		}
 	}
 	else if (scene_number == FINISH_SCENE) {
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		guiupdate();
 		if (score_cal) {
 			engine->play2D(wav_score_src, false);
 			score_start = now_time;
@@ -1166,21 +1451,29 @@ void render()
 		if (diff_time <= score_duration) {
 			float score_text = score * sinf(diff_time / score_duration * 5 * PI / 2);
 			std::string score_string = "SCORE: " + std::to_string(score_text);
-			render_text(score_string, 450, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			render_text(score_string, 450, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 		} 
 		else if(diff_time <=  score_duration+grade_duration){
 			std::string score_string = "SCORE: " + std::to_string(score);
 			float opacity = 1.0f - (score_duration + grade_duration - diff_time) / grade_duration;
 			float size = 1.f + (score_duration + grade_duration - diff_time) / grade_duration;
-			render_text(score_string, 450, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
-			render_text(grade_string, 580, 180, size, vec4(1.0f, 1.0f, 1.0f, opacity));
+			render_text(score_string, 450, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
+			render_text(grade_string, 580, 180, size, vec4(0.0f, 0.0f, 0.0f, opacity));
 		}
 		else {
 			std::string score_string = "SCORE: " + std::to_string(score);
-			render_text(score_string, 450, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
-			render_text(grade_string, 580, 180, 1.0f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			render_text(score_string, 450, 100, 0.8f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
+			render_text(grade_string, 580, 180, 1.0f, vec4(0.0f, 0.0f, 0.0f, 1.0f));
 		}
-
+		choice_restart = true;
+		choice_finish = true;
+		ImGui::Render();
+		int display_w, display_h;
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+		//glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 	// swap front and back buffers, and display to screen
 	glfwSwapBuffers( window );
@@ -1201,9 +1494,10 @@ void print_help()
 	printf( "[help]\n" );
 	printf( "- press ESC or 'q' to terminate the program\n" );
 	printf( "- press F1 or 'h' to see help\n" );
-	printf( "- press 'w' to toggle wireframe\n");
-	printf( "- press Home to reset camera\n" );
-	printf( "- press Pause to pause the simulation");
+	printf( "- press Home to reset minimap\n" );
+	printf("- press arrow keys to move duck\n");
+	printf("- press a, s, d to rotate or invert map\n");
+	printf("- press shift to dash\n");
 	printf( "\n" );
 }
 
@@ -1662,6 +1956,37 @@ bool user_init()
 	wav_button_src = engine->addSoundSourceFromFile(wav_button_click_path);
 	wav_button_src->setDefaultVolume(0.f);
 
+	//load image
+	bool duck_key = LoadTextureFromFile("duck_key.png", &duck_key_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(duck_key);
+
+	bool spacebar = LoadTextureFromFile("spacebar.png", &spacebar_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(spacebar);
+
+	bool cube_key = LoadTextureFromFile("cube_key.png", &cube_key_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(cube_key);
+
+	bool start = LoadTextureFromFile("start.png", &start_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(start);
+
+	bool option = LoadTextureFromFile("option.png", &option_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(option);
+
+	bool end = LoadTextureFromFile("end.png", &end_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(end);
+
+	bool how = LoadTextureFromFile("how.png", &how_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(how);
+
+	bool restart = LoadTextureFromFile("restart.png", &restart_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(restart);
+
+	bool name = LoadTextureFromFile("duckcube.png", &gamename_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(name);
+
+	bool shift = LoadTextureFromFile("shift.png", &shift_image_texture, &my_image_width, &my_image_height);
+	IM_ASSERT(name);
+
 	engine->play2D(mp3_lobby_src, true);
 
 	// setup freetype
@@ -1694,6 +2019,40 @@ int main( int argc, char* argv[] )
     glfwSetKeyCallback( window, keyboard );			// callback for keyboard events
 	glfwSetMouseButtonCallback( window, mouse );	// callback for mouse click inputs
 	glfwSetCursorPosCallback( window, motion );		// callback for mouse movement
+		
+	// Decide GL+GLSL versions
+#if __APPLE__
+	// GL 3.2 + GLSL 150
+	const char* glsl_version = "#version 150";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+#else
+	// GL 3.0 + GLSL 130
+	const char* glsl_version = "#version 130";
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	//glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+	//glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+#endif
+
+	glfwMakeContextCurrent(window);
+	glfwSwapInterval(1); // Enable vsync
+
+		// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+	// Setup Dear ImGui style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsClassic();
+
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
 
 	// enters rendering/event loop
 	for( frame=0; !glfwWindowShouldClose(window); frame++ )

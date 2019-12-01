@@ -6,7 +6,7 @@ struct background_t
 {
 	vec3 center = vec3(0.0f, 0.0f, 0.0f);
 	mat4 scale_matrix;
-	vec4 color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	mat4 model_matrix;
 	float distance = 0.0f;
 
@@ -40,7 +40,6 @@ background_t create_background() {
 		0, 0, 0, 1
 	};
 	back.model_matrix = translate_matrix * rotation_matrix * back.scale_matrix;
-	back.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	back.initial();
 	return back;
 }
@@ -49,7 +48,7 @@ inline void background_t::initial() {
 }
 
 inline void background_t::update() {
-	center = vec3(-50.0f, 53.0f, 45.0f);
+	center = vec3(-50.0f, 61.0f, 45.0f);
 	mat4 rotation_matrix =
 	{
 	    1, 0, 0, 0,
