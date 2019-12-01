@@ -137,6 +137,11 @@ bool	gravity_on = false;
 
 // minimap
 mat4	minimap_rotation_matrix = mat4{ 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+vec2	last_pos = vec2(0.0f, 0.0f);
+vec2	now_pos = vec2(0.0f, 0.0f);
+vec2	save_diff = vec2(0.0f, 0.0f);
+vec2	pos_diff = vec2(0.0f, 0.0f);
+bool	save_rotation = false;
 
 // lobby
 float	cam_duration_time = 2.0f;
@@ -328,7 +333,8 @@ void render()
 			if (c.type == 3) finish_location = c.center;
 			else if (c.type == 2) start_location = c.center;
 		}
-		minimap.update(stage, cube_distance[stage - 1], start_location, finish_location, duck_location, minimap_rotation_matrix, tb.b_tracking);
+		minimap.update(stage, cube_distance[stage - 1], start_location, finish_location, duck_location, minimap_rotation_matrix, tb.b_tracking, pos_diff, save_rotation);
+		if (save_rotation) save_rotation = false;
 
 		if (vertex_sphere_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_sphere_buffer);
 		if (index_sphere_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_sphere_buffer);
@@ -1033,9 +1039,13 @@ void mouse( GLFWwindow* window, int button, int action, int mods )
 		vec2 npos = vec2( float(pos.x)/float(window_size.x-1), float(pos.y)/float(window_size.y-1) );
 		if (action == GLFW_PRESS) {
 			tb.begin(cam.view_matrix, npos.x, npos.y, cam.at);
+			last_pos = npos;
+			now_pos = npos;
+			save_rotation = true;
 		}
 		else if (action == GLFW_RELEASE) {
 			tb.end();
+			save_diff = pos_diff;
 		}
 	}
 }
@@ -1045,6 +1055,9 @@ void motion( GLFWwindow* window, double x, double y )
 	if(!tb.is_tracking()) return;
 	
 	vec2 npos = vec2(float(x) / float(window_size.x - 1), float(y) / float(window_size.y - 1));
+	//last_pos = now_pos;
+	now_pos = npos;
+	pos_diff = save_diff + now_pos - last_pos;
 	//cam.view_matrix = tb.update(npos.x, npos.y);
 	minimap_rotation_matrix = tb.update(npos.x, npos.y);
 }
@@ -1095,7 +1108,7 @@ bool user_init()
 	mp3_src->setDefaultVolume(0.5f);
 
 	mp3_back_src = engine->addSoundSourceFromFile(mp3_back_path);
-	mp3_back_src -> setDefaultVolume(0.5f);
+	mp3_back_src -> setDefaultVolume(0.2f);
 
 	engine->play2D(mp3_back_src, true);
 
