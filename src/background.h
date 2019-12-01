@@ -4,25 +4,25 @@
 
 struct background_t
 {
-	vec3 center;
+	vec3 center = vec3(0.0f, 0.0f, 0.0f);
 	mat4 scale_matrix;
-	vec4 color;
+	vec4 color = vec4(0.0f, 0.0f, 0.0f, 0.0f);
 	mat4 model_matrix;
-	float distance;
+	float distance = 0.0f;
 
-	void update(vec3 eye);
+	void update();
 	void initial();
 };
 
 background_t create_background() {
 	background_t back;
 	back.distance = 200.0f;
-	back.center = vec3(-200.0f, 0.0f, 0.0f);
+	back.center = vec3(-200.0f, 35.0f, 30.0f);
 	back.scale_matrix =
 	{
 		1, 0, 0, 0,
-		0, 2000, 0, 0,
-		0, 0, 2000, 0,
+		0, 27, 0, 0,
+		0, 0, 27, 0,
 		0, 0, 0, 1
 	};
 	mat4 translate_matrix =
@@ -40,28 +40,20 @@ background_t create_background() {
 		0, 0, 0, 1
 	};
 	back.model_matrix = translate_matrix * rotation_matrix * back.scale_matrix;
-	back.color = vec4(0.3f, 0.3f, 0.8f, 1.0f);
+	back.color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 	back.initial();
 	return back;
 }
 
 inline void background_t::initial() {
-	vec3 eye = vec3(0.0f, 150.0f, 0.0f);
-	update(eye);
 }
 
-inline void background_t::update(vec3 eye) {
-	vec3 direction = normalize(eye);
-	direction.x = -direction.x;
-	direction.y = -direction.y;
-	direction.z = 0.0f;
-	center = direction * distance;
-	float cosx = direction.x;
-	float sinx = direction.y;
+inline void background_t::update() {
+	center = vec3(-50.0f, 53.0f, 45.0f);
 	mat4 rotation_matrix =
 	{
-	    cosx, -sinx, 0, 0,
-		sinx, cosx, 0, 0,
+	    1, 0, 0, 0,
+		0, 1, 0, 0,
 		0, 0, 1, 0,
 		0, 0, 0, 1
 	};

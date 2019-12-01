@@ -13,12 +13,13 @@
 
 #pragma comment(lib, "irrKlang.lib")
 
+#define MAIN_SCENE 0
 #define GAME_SCENE 2
 #define	DUCK_SCENE 1
-#define MINIMAP 3
 #define	STAGE_NUMBER 4
 #define STAGE_COMPLETE 5
 #define	FINISH_SCENE 6
+#define STAGE_FAIL 7
  
 //*******************************************************************
 // forward declarations for freetype text
@@ -31,7 +32,12 @@ static const char*	window_name = "duck";
 static const char*	vert_shader_path = "../bin/shaders/trackball.vert";
 static const char*	frag_shader_path = "../bin/shaders/trackball.frag";
 static const char*	mp3_path = "../bin/duck_sound.mp3";
-static const char*	mp3_back_path = "../bin/background_sound.mp3";
+static const char*	mp3_back_path = "../bin/lobby_sound.mp3";
+static const char*  mp3_lobby_path = "../bin/background_sound.mp3";
+static const char*	wav_score_path = "../bin/drum.wav";
+static const char*	mp3_complete_path = "../bin/complete.mp3";
+static const char*	mp3_fail_path = "../bin/fail.mp3";
+static const char*	wav_button_click_path = "../bin/button_click.wav";
 
 //*******************************************************************
 // common structures
@@ -72,6 +78,11 @@ GLuint	index_sphere_buffer = 0;
 irrklang::ISoundEngine* engine;
 irrklang::ISoundSource* mp3_src = nullptr;
 irrklang::ISoundSource* mp3_back_src = nullptr;
+irrklang::ISoundSource* mp3_lobby_src = nullptr;
+irrklang::ISoundSource* wav_score_src = nullptr;
+irrklang::ISoundSource* mp3_complete_src = nullptr;
+irrklang::ISoundSource* mp3_fail_src = nullptr;
+irrklang::ISoundSource* wav_button_src = nullptr;
 
 //*******************************************************************
 // global variables
@@ -85,7 +96,7 @@ int		scene_number = DUCK_SCENE;
 // time informations
 float	last_time;
 float	now_time = float(glfwGetTime());
-float	stage_time[3] = { 30.0f, 50.0f, 100.0f };
+float	stage_time[3] = { 20.0f, 40.0f, 80.0f };
 float	stage_get_time[3] = { 0.0f, 0.0f, 0.0f };
 float	stage_time_start;
 
@@ -103,6 +114,7 @@ duck_t	character_lobby = create_duck_lobby(char_lobby_size);
 cube_t	lobby_cube = create_lobby(character_lobby.center, character_lobby.radius);
 minimap_t minimap = create_minimap();
 background_t background = create_background();
+
 
 // map camera moving variables
 float	stage_cam_duration_time = 2.0f;
@@ -142,6 +154,7 @@ vec2	now_pos = vec2(0.0f, 0.0f);
 vec2	save_diff = vec2(0.0f, 0.0f);
 vec2	pos_diff = vec2(0.0f, 0.0f);
 bool	save_rotation = false;
+bool	home_lock = false;
 
 // lobby
 float	cam_duration_time = 2.0f;
@@ -161,6 +174,13 @@ float	stage_start_time = float(glfwGetTime());
 // complete scene
 float	complete_start_time = float(glfwGetTime());
 
+// finish
+float	score = 0.0f;
+bool	score_cal = false;
+int		grade = 0;
+float	score_start = 0.0f;
+float	score_duration = 4.0f;
+float	grade_duration = 0.5f;
 
 vec3	char_center = character.center;
 
@@ -184,6 +204,37 @@ camera		cam;
 trackball	tb;
 
 //*******************************************************************
+void minimap_reset() {
+	vec3 start_location, finish_location, duck_location;
+	duck_location = character.center;
+	for (auto& c : map.at(stage - 1)) {
+		if (c.type == 3) finish_location = c.center;
+		else if (c.type == 2) start_location = c.center;
+	}
+	save_diff = vec2(0.0f, 0.0f);
+	pos_diff = vec2(0.0f, 0.0f);
+	minimap.reset(stage, cube_distance[stage - 1], start_location, finish_location, duck_location);
+}
+
+void game_reset() {
+	engine->stopAllSounds();
+	engine->play2D(mp3_lobby_src, true);
+	scene_number = DUCK_SCENE;
+	stage = 1;
+	character.set_location(stage, cube_distance[stage - 1], char_size);
+	minimap_reset();
+	map.clear();
+	auto map1 = std::move(create_map(cube_distance[0], 1));
+	auto map2 = std::move(create_map(cube_distance[1], 2));
+	auto map3 = std::move(create_map(cube_distance[2], 3));
+	map.emplace_back(map1);
+	map.emplace_back(map2);
+	map.emplace_back(map3);
+	cam_moving = true;
+	cam_start_time = float(glfwGetTime());
+	to_next_scene = false;
+}
+
 void update()
 {
 	// update projection matrix
@@ -207,7 +258,10 @@ void render()
 
 	// notify GL that we use our own program and buffers
 	glUseProgram( program );
-	if (scene_number == GAME_SCENE) {
+	if (scene_number == MAIN_SCENE) {
+
+	}
+	else if (scene_number == GAME_SCENE) {
 		// bind vertex attributes to your shader program
 		if (stage_cam_moving) {
 			float theta = (-stage_cam_start_time + now_time) / stage_cam_duration_time * 3.0f * PI / 2.0f;
@@ -259,7 +313,8 @@ void render()
 				}
 			}
 		}
-
+		
+		// character
 		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3]) && !moving) {
 			moving = true;
 			moving_start_time = float(glfwGetTime());
@@ -269,8 +324,14 @@ void render()
 		}
 		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
 			indic++;
-			if (vertex_char_moving_buffer[indic / 10 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
-			if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+			if (dash) {
+				if (vertex_char_moving_buffer[indic / 5 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 5 % 4]);
+				if (index_char_moving_buffer[indic / 5 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 5 % 4]);
+			}
+			else {
+				if (vertex_char_moving_buffer[indic / 10 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
+				if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+			}
 		}
 		else {
 			if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
@@ -292,10 +353,10 @@ void render()
 				gravity_on = character.update_gravity(map.at(stage - 1), passed_time / 2, cube_distance[stage - 1], stage);
 			}
 			else {
-				character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
+				if(dash) character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 20.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
+				else character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
 			}
 		}
-
 		char_center = character.center;
 		GLint uloc;
 		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
@@ -308,6 +369,7 @@ void render()
 
 		cg_bind_vertex_attributes(program);
 
+		// stage
 		for (auto& c : map.at(stage - 1)) {
 			if (rotate) {
 				c.update(command, tick, double_rotate, char_center, char_size, cube_distance[stage - 1]);
@@ -327,54 +389,59 @@ void render()
 
 		}
 
-		vec3 start_location, finish_location, duck_location;
-		duck_location = character.center;
-		for (auto& c : map.at(stage - 1)) {
-			if (c.type == 3) finish_location = c.center;
-			else if (c.type == 2) start_location = c.center;
+		if (!stage_cam_moving && !stage_cam_closer_moving) {
+			// minimap
+			vec3 start_location, finish_location, duck_location;
+			duck_location = character.center;
+			for (auto& c : map.at(stage - 1)) {
+				if (c.type == 3) finish_location = c.center;
+				else if (c.type == 2) start_location = c.center;
+			}
+			minimap.update(stage, cube_distance[stage - 1], start_location, finish_location, duck_location, minimap_rotation_matrix, tb.b_tracking, pos_diff, save_rotation);
+			if (save_rotation) save_rotation = false;
+
+			if (vertex_sphere_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_sphere_buffer);
+			if (index_sphere_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_sphere_buffer);
+			cg_bind_vertex_attributes(program);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.start_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.start_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.finish_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.finish_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.duck_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.duck_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+			if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+
+			cg_bind_vertex_attributes(program);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			// minimap background
+			background.update();
+
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 		}
-		minimap.update(stage, cube_distance[stage - 1], start_location, finish_location, duck_location, minimap_rotation_matrix, tb.b_tracking, pos_diff, save_rotation);
-		if (save_rotation) save_rotation = false;
-
-		if (vertex_sphere_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_sphere_buffer);
-		if (index_sphere_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_sphere_buffer);
-		cg_bind_vertex_attributes(program);
-
-		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.start_color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.start_model_matrix);
-
-		glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
-
-		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.finish_color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.finish_model_matrix);
-
-		glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
-
-		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.duck_color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.duck_model_matrix);
-
-		glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
-
-		if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-		if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-
-		cg_bind_vertex_attributes(program);
-
-		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.model_matrix);
-
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
-
-		background.update(cam.eye);
-
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
-
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+		
 
 		stage_get_time[stage - 1] = stage_time[stage - 1] - (now_time - stage_time_start);
 		if (stage_get_time[stage - 1] >= stage_time[stage - 1]) stage_get_time[stage - 1] = stage_time[stage - 1];
@@ -382,11 +449,13 @@ void render()
 		std::string left_time = std::to_string(stage_get_time[stage-1]);
 		render_text(left_time, 500, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		if (stage_get_time[stage - 1] == 0) {
-			scene_number = FINISH_SCENE;
+			engine->play2D(mp3_fail_src, false);
+			complete_start_time = float(glfwGetTime());
+			scene_number = STAGE_FAIL;		
 		}
 
 		if (stage_get_time[stage-1]!=0 && gravity_on && !rotate && character.isClear(map.at(stage - 1), stage)) {
-			stage = stage == 3 ? 1 : stage + 1;
+			engine->play2D(mp3_complete_src, false);
 			scene_number = STAGE_COMPLETE;
 			complete_start_time = float(glfwGetTime());
 		}
@@ -423,7 +492,7 @@ void render()
 			}
 			cam.eye = vec3(150.0f - pass, 0, 0);
 			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
-		}
+		}		
 		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3]) && !moving) {
 			moving = true;
 			moving_start_time = float(glfwGetTime());
@@ -432,8 +501,14 @@ void render()
 		}
 		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
 			indic++;
-			if (vertex_char_moving_buffer[indic / 10 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
-			if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+			if (dash) {
+				if (vertex_char_moving_buffer[indic / 5 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 5 % 4]);
+				if (index_char_moving_buffer[indic / 5 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 5 % 4]);
+			}
+			else {
+				if (vertex_char_moving_buffer[indic / 10 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
+				if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+			}
 		}
 		else {
 			if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
@@ -441,7 +516,8 @@ void render()
 		}
 		cg_bind_vertex_attributes(program);
 
-		character_lobby.update_moving_lobby(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), character_lobby.radius*4.0f);
+		if (dash) character_lobby.update_moving_lobby(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 20.0f * (now_time - last_time), character_lobby.radius * 4.0f);
+		else character_lobby.update_moving_lobby(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), character_lobby.radius * 4.0f);
 
 		GLint uloc;
 		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
@@ -459,15 +535,10 @@ void render()
 
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 
-		background.update(cam.eye);
-
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
-
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
-
 		if (to_next_scene) {
 			if (now_time - to_next_start >= to_next_time) {
+				engine->stopAllSounds();
+				engine->play2D(mp3_back_src, true);
 				scene_number = STAGE_NUMBER;
 				stage_start_time = float(glfwGetTime());
 			}
@@ -506,31 +577,7 @@ void render()
 		}
 		
 	}
-	else if (scene_number == MINIMAP) {
-		if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
-		if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
-		cg_bind_vertex_attributes(program);
-		character_lobby.update_moving_lobby(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), character_lobby.radius * 4.0f);
-		GLint uloc;
-		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, character_lobby.model_matrix);
-		glDrawElements(GL_TRIANGLES, char_indices.size(), GL_UNSIGNED_INT, nullptr);
-	}
 	else if (scene_number == STAGE_NUMBER) {
-		GLuint uloc;
-
-		if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
-		if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-
-		cg_bind_vertex_attributes(program);
-
-		background.update(cam.eye);
-
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
-
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
-
 		float diff_time = now_time - stage_start_time;
 		std::string str = "Stage 1";
 		if (stage == 2) str[6] = '2';
@@ -562,20 +609,200 @@ void render()
 		}
 	}
 	else if (scene_number == STAGE_COMPLETE) {
-		GLuint uloc;
+	// bind vertex attributes to your shader program
+		if (stage_cam_moving) {
+			float theta = (-stage_cam_start_time + now_time) / stage_cam_duration_time * 3.0f * PI / 2.0f;
+			if (theta >= 3 * PI / 2) {
+				theta = 3 * PI / 2;
+				stage_cam_moving = false;
+				stage_cam_closer_moving = true;
+				stage_cam_closer_start_time = float(glfwGetTime());
+			}
+			float cam_y = cosf(theta) * 150.0f;
+			float cam_x = sinf(theta) * 150.0f;
+			cam.eye = vec3(-cam_x, cam_y, 0);
+			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
+			stage_time_start = float(glfwGetTime());
+		}
+		else if (stage_cam_closer_moving) {
+			float pass = (now_time - stage_cam_closer_start_time) / stage_cam_closer_duration_time * 50.0f;
+			if (pass >= 50.0f) {
+				pass = 50.0f;
+				stage_cam_closer_moving = false;
+			}
+			cam.eye = vec3(150.0f - pass, 0, 0);
+			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
+			stage_time_start = float(glfwGetTime());
+		}
+
+		passed_time = now_time - start_time;
+
+		if (key_lock) {
+			if (tick_time * now_tick <= passed_time && tick_time * (now_tick + 1) >= passed_time) {
+				now_tick++;
+				double_rotate = 1;
+				rotate = true;
+			}
+			else if ((now_tick + 1) * tick_time < passed_time) {
+				for (int k = 2;; k++) {
+					if ((now_tick + k) * tick_time >= passed_time) {
+						if (now_tick + k > tick) {
+							double_rotate = tick - now_tick;
+							now_tick = tick;
+						}
+						else {
+							now_tick += k;
+							double_rotate = k;
+						}
+						rotate = true;
+						break;
+					}
+				}
+			}
+		}
+		
+		// character
+		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3]) && !moving) {
+			moving = true;
+			moving_start_time = float(glfwGetTime());
+		}
+		if (!(character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
+			moving = false;
+		}
+		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
+			indic++;
+			if (dash) {
+				if (vertex_char_moving_buffer[indic / 5 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 5 % 4]);
+				if (index_char_moving_buffer[indic / 5 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 5 % 4]);
+			}
+			else {
+				if (vertex_char_moving_buffer[indic / 10 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
+				if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+			}
+		}
+		else {
+			if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
+			if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
+
+		}
+		cg_bind_vertex_attributes(program);
+
+		if (rotate) {
+			character.update_rotate(command, rotate, tick, double_rotate, false, cube_distance[stage - 1]);
+		}
+		else if (!key_lock) {
+			// gravity_on : true -> on floor / false -> not on floor
+			if (gravity_on) {
+				gravity_on = character.check_if_on_floor(map.at(stage - 1), cube_distance[stage - 1], stage);
+				start_time = now_time;
+			}
+			if (!gravity_on) {
+				gravity_on = character.update_gravity(map.at(stage - 1), passed_time / 2, cube_distance[stage - 1], stage);
+			}
+			else {
+				if (dash) character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 20.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
+				else character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
+			}
+		}
+
+		char_center = character.center;
+		GLint uloc;
+		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
+		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, character.model_matrix);
+
+		glDrawElements(GL_TRIANGLES, char_indices.size(), GL_UNSIGNED_INT, nullptr);
 
 		if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
 		if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
 
 		cg_bind_vertex_attributes(program);
 
-		background.update(cam.eye);
+		// stage
+		for (auto& c : map.at(stage - 1)) {
+			if (rotate) {
+				c.update(command, tick, double_rotate, char_center, char_size, cube_distance[stage - 1]);
+			}
+			else {
+				c.update(command, tick, double_rotate, char_center, char_size, cube_distance[stage - 1]);
+			}
 
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
+			if (c.color.w == 0.0f) continue;
+			// update per-circle uniforms
+			GLint uloc;
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, c.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, c.model_matrix);
 
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 
+		}
+
+		if (!stage_cam_moving && !stage_cam_closer_moving) {
+			// minimap
+			vec3 start_location, finish_location, duck_location;
+			duck_location = character.center;
+			for (auto& c : map.at(stage - 1)) {
+				if (c.type == 3) finish_location = c.center;
+				else if (c.type == 2) start_location = c.center;
+			}
+			minimap.update(stage, cube_distance[stage - 1], start_location, finish_location, duck_location, minimap_rotation_matrix, tb.b_tracking, pos_diff, save_rotation);
+			if (save_rotation) save_rotation = false;
+
+			if (vertex_sphere_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_sphere_buffer);
+			if (index_sphere_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_sphere_buffer);
+			cg_bind_vertex_attributes(program);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.start_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.start_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.finish_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.finish_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.duck_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.duck_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+			if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+
+			cg_bind_vertex_attributes(program);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			// minimap background
+			background.update();
+
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+		}
+		
+		//stage_get_time[stage - 1] = stage_time[stage - 1] - (now_time - stage_time_start);
+		//if (stage_get_time[stage - 1] >= stage_time[stage - 1]) stage_get_time[stage - 1] = stage_time[stage - 1];
+		//if (stage_get_time[stage - 1] <= 0) stage_get_time[stage - 1] = 0;
+		std::string left_time = std::to_string(stage_get_time[stage-1]);
+		render_text(left_time, 500, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+		rotate = false;
+		if (key_lock) {
+			if (now_tick == tick) {
+				command = 0;
+				key_lock = false;
+			}
+		}
 		float diff_time = now_time - complete_start_time;
 		std::string str = "Complete";
 		if (diff_time <= 0.5f) {}
@@ -584,6 +811,238 @@ void render()
 			float size = diff_time / 1.0f * 2.0f;
 			GLuint text_x = GLuint( (800.0f + 440.0f)/2 - (800.0f - 440.0f) / 2 * diff_time / 1.0f);
 			GLuint text_y = GLuint( (415.0f + 480.0f)/2 + (480.0f - 415.0f) / 2 * diff_time / 1.0f);
+			render_text(str, text_x, text_y, size, vec4(0.8f, 0.5f, 0.8f, diff_time));
+		}
+		else if (diff_time <= 1.7f) {
+			render_text(str, 440, 480, 2.0f, vec4(0.8f, 0.5f, 0.8f, 1.0f));
+		}
+		else if (diff_time < 2.2f) {
+			float opacity = (2.2f - diff_time) / 0.5f;
+			float size = (2.2f - diff_time) / 0.5f * 2.0f;
+			GLuint text_x = GLuint((800.0f + 440.0f) / 2 + (800.0f - 440.0f) / 2 * (diff_time- 2.2f) / 0.5f);
+			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (415.0f - 480.0f) / 2 * (diff_time - 2.2f) / 0.5f);
+			render_text(str, text_x, text_y, size, vec4(0.8f, 0.5f, 0.8f, diff_time));
+		}
+		else if (diff_time >= 2.5f) {
+			if (stage == 3) {
+				engine->stopAllSounds();
+				engine->play2D(mp3_lobby_src, true);
+				scene_number = FINISH_SCENE;
+				score_cal = true;
+			}
+			else {
+				scene_number = STAGE_NUMBER;
+				stage_start_time = float(glfwGetTime());
+				minimap_reset();
+				stage = stage == 3 ? 1 : stage + 1;
+			}
+			
+		}
+	}
+	else if (scene_number == STAGE_FAIL) {
+		// bind vertex attributes to your shader program
+		if (stage_cam_moving) {
+			float theta = (-stage_cam_start_time + now_time) / stage_cam_duration_time * 3.0f * PI / 2.0f;
+			if (theta >= 3 * PI / 2) {
+				theta = 3 * PI / 2;
+				stage_cam_moving = false;
+				stage_cam_closer_moving = true;
+				stage_cam_closer_start_time = float(glfwGetTime());
+			}
+			float cam_y = cosf(theta) * 150.0f;
+			float cam_x = sinf(theta) * 150.0f;
+			cam.eye = vec3(-cam_x, cam_y, 0);
+			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
+			stage_time_start = float(glfwGetTime());
+		}
+		else if (stage_cam_closer_moving) {
+			float pass = (now_time - stage_cam_closer_start_time) / stage_cam_closer_duration_time * 50.0f;
+			if (pass >= 50.0f) {
+				pass = 50.0f;
+				stage_cam_closer_moving = false;
+			}
+			cam.eye = vec3(150.0f - pass, 0, 0);
+			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
+			stage_time_start = float(glfwGetTime());
+		}
+
+		passed_time = now_time - start_time;
+
+		if (key_lock) {
+			if (tick_time * now_tick <= passed_time && tick_time * (now_tick + 1) >= passed_time) {
+				now_tick++;
+				double_rotate = 1;
+				rotate = true;
+			}
+			else if ((now_tick + 1) * tick_time < passed_time) {
+				for (int k = 2;; k++) {
+					if ((now_tick + k) * tick_time >= passed_time) {
+						if (now_tick + k > tick) {
+							double_rotate = tick - now_tick;
+							now_tick = tick;
+						}
+						else {
+							now_tick += k;
+							double_rotate = k;
+						}
+						rotate = true;
+						break;
+					}
+				}
+			}
+		}
+		
+		// character
+		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3]) && !moving) {
+			moving = true;
+			moving_start_time = float(glfwGetTime());
+		}
+		if (!(character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
+			moving = false;
+		}
+		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3])) {
+			indic++;
+			if (dash) {
+				if (vertex_char_moving_buffer[indic / 5 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 5 % 4]);
+				if (index_char_moving_buffer[indic / 5 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 5 % 4]);
+			} 
+			else {
+				if (vertex_char_moving_buffer[indic / 10 % 4])	glBindBuffer(GL_ARRAY_BUFFER, vertex_char_moving_buffer[indic / 10 % 4]);
+				if (index_char_moving_buffer[indic / 10 % 4])		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_moving_buffer[indic / 10 % 4]);
+			}
+		}
+		else {
+			if (vertex_char_buffer)		glBindBuffer(GL_ARRAY_BUFFER, vertex_char_buffer);
+			if (index_char_buffer)		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_char_buffer);
+
+		}
+		cg_bind_vertex_attributes(program);
+
+		if (rotate) {
+			character.update_rotate(command, rotate, tick, double_rotate, false, cube_distance[stage - 1]);
+		}
+		else if (!key_lock) {
+			// gravity_on : true -> on floor / false -> not on floor
+			if (gravity_on) {
+				gravity_on = character.check_if_on_floor(map.at(stage - 1), cube_distance[stage - 1], stage);
+				start_time = now_time;
+			}
+			if (!gravity_on) {
+				gravity_on = character.update_gravity(map.at(stage - 1), passed_time / 2, cube_distance[stage - 1], stage);
+			}
+			else {
+				if (dash) character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 20.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
+				else character.update_moving(character_move_bool[2], character_move_bool[3], character_move_bool[0], character_move_bool[1], 10.0f * (now_time - last_time), map.at(stage - 1), stage, cube_distance[stage - 1]);
+			}
+		}
+
+		char_center = character.center;
+		GLint uloc;
+		uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, false);
+		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, character.model_matrix);
+
+		glDrawElements(GL_TRIANGLES, char_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+		if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+		if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+
+		cg_bind_vertex_attributes(program);
+
+		// stage
+		for (auto& c : map.at(stage - 1)) {
+			if (rotate) {
+				c.update(command, tick, double_rotate, char_center, char_size, cube_distance[stage - 1]);
+			}
+			else {
+				c.update(command, tick, double_rotate, char_center, char_size, cube_distance[stage - 1]);
+			}
+
+			if (c.color.w == 0.0f) continue;
+			// update per-circle uniforms
+			GLint uloc;
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, c.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, c.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+
+		}
+
+		if (!stage_cam_moving && !stage_cam_closer_moving) {
+			// minimap
+			vec3 start_location, finish_location, duck_location;
+			duck_location = character.center;
+			for (auto& c : map.at(stage - 1)) {
+				if (c.type == 3) finish_location = c.center;
+				else if (c.type == 2) start_location = c.center;
+			}
+			minimap.update(stage, cube_distance[stage - 1], start_location, finish_location, duck_location, minimap_rotation_matrix, tb.b_tracking, pos_diff, save_rotation);
+			if (save_rotation) save_rotation = false;
+
+			if (vertex_sphere_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_sphere_buffer);
+			if (index_sphere_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_sphere_buffer);
+			cg_bind_vertex_attributes(program);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.start_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.start_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.finish_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.finish_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.duck_color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.duck_model_matrix);
+
+			glDrawElements(GL_TRIANGLES, sphere_indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			if (vertex_buffer)	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+			if (index_buffer)	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
+
+			cg_bind_vertex_attributes(program);
+
+			uloc = glGetUniformLocation(program, "b_solid_color");		if (uloc > -1) glUniform1i(uloc, true);	// pointer version
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, minimap.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, minimap.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+
+			// minimap background
+			background.update();
+
+			uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
+			uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
+
+			glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
+		}
+		
+		stage_get_time[stage - 1] = stage_time[stage - 1] - (now_time - stage_time_start);
+		if (stage_get_time[stage - 1] >= stage_time[stage - 1]) stage_get_time[stage - 1] = stage_time[stage - 1];
+		if (stage_get_time[stage - 1] <= 0) stage_get_time[stage - 1] = 0;
+		std::string left_time = std::to_string(stage_get_time[stage-1]);
+		render_text(left_time, 500, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+
+		rotate = false;
+		if (key_lock) {
+			if (now_tick == tick) {
+				command = 0;
+				key_lock = false;
+			}
+		}
+
+		float diff_time = now_time - complete_start_time;
+		std::string str = "Fail..";
+		if (diff_time <= 0.5f) {}
+		else if (diff_time <= 1.0f) {
+			float opacity = diff_time / 1.0f;
+			float size = diff_time / 1.0f * 2.0f;
+			GLuint text_x = GLuint((800.0f + 440.0f) / 2 - (800.0f - 440.0f) / 2 * diff_time / 1.0f);
+			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (480.0f - 415.0f) / 2 * diff_time / 1.0f);
 			render_text(str, text_x, text_y, size, vec4(1.0f, 1.0f, 1.0f, diff_time));
 		}
 		else if (diff_time <= 1.7f) {
@@ -592,16 +1051,47 @@ void render()
 		else if (diff_time < 2.2f) {
 			float opacity = (2.2f - diff_time) / 0.5f;
 			float size = (2.2f - diff_time) / 0.5f * 2.0f;
-			GLuint text_x = GLuint((800.0f + 440.0f) / 2 + (800.0f - 440.0f) / 2 * (diff_time- 2.2f) / 0.5f);
+			GLuint text_x = GLuint((800.0f + 440.0f) / 2 + (800.0f - 440.0f) / 2 * (diff_time - 2.2f) / 0.5f);
 			GLuint text_y = GLuint((415.0f + 480.0f) / 2 + (415.0f - 480.0f) / 2 * (diff_time - 2.2f) / 0.5f);
 			render_text(str, text_x, text_y, size, vec4(1.0f, 1.0f, 1.0f, diff_time));
 		}
 		else if (diff_time >= 2.5f) {
-			scene_number = STAGE_NUMBER;
-			stage_start_time = float(glfwGetTime());
+			engine->stopAllSounds();
+			engine->play2D(mp3_lobby_src, true);
+			scene_number = FINISH_SCENE;
+			score_cal = true;
 		}
 	}
 	else if (scene_number == FINISH_SCENE) {
+		if (score_cal) {
+			engine->play2D(wav_score_src, false);
+			score_start = now_time;
+			score = 0.0f;
+			score = (stage_get_time[0]) * 1.0f + (stage_get_time[1]) * 1.5f + (stage_get_time[2]) * 2.0f;
+			if (stage_get_time[0] == 0.0f) {
+				grade = 0; // F
+			}
+			else if (stage_get_time[1] == 0.0f) {
+				grade = 1; // C
+				if (score >= 10.0f) {
+					grade = 2; // C+
+				}
+			} 
+			else if (stage_get_time[2] == 0.0f) {
+				grade = 3; // B
+				if (score >= 40.0f) {
+					grade = 4; // B+
+				}
+			}
+			else {
+				grade = 5; // A
+				if (score >= 100.0f) {
+					grade = 6; // A+
+				}
+			}
+			score = score * 100.0f / (stage_time[0] + stage_time[1]*1.5f + stage_time[2]*2.0f);
+			score_cal = false;
+		}
 		cam.eye = vec3(100, 0, 0);
 		cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
 		if ((character_move_bool[0] || character_move_bool[1] || character_move_bool[2] || character_move_bool[3]) && !moving) {
@@ -647,12 +1137,50 @@ void render()
 
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 
-		background.update(cam.eye);
+		float diff_time = now_time - score_start;
+		std::string grade_string = "A+";
+		switch (grade) {
+		case 0:
+			grade_string[0] = 'F';
+			grade_string[1] = '\0';
+			break;
+		case 1:
+			grade_string[0] = 'C';
+			grade_string[1] = '\0';
+			break;
+		case 2:
+			grade_string[0] = 'C';
+			break;
+		case 3:
+			grade_string[0] = 'B';
+			grade_string[1] = '\0';
+			break;
+		case 4:
+			grade_string[0] = 'B';
+			break;
+		case 5:
+			grade_string[0] = 'A';
+			grade_string[1] = '\0';
+			break;
+		}
+		if (diff_time <= score_duration) {
+			float score_text = score * sinf(diff_time / score_duration * 5 * PI / 2);
+			std::string score_string = "SCORE: " + std::to_string(score_text);
+			render_text(score_string, 450, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		} 
+		else if(diff_time <=  score_duration+grade_duration){
+			std::string score_string = "SCORE: " + std::to_string(score);
+			float opacity = 1.0f - (score_duration + grade_duration - diff_time) / grade_duration;
+			float size = 1.f + (score_duration + grade_duration - diff_time) / grade_duration;
+			render_text(score_string, 450, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			render_text(grade_string, 580, 180, size, vec4(1.0f, 1.0f, 1.0f, opacity));
+		}
+		else {
+			std::string score_string = "SCORE: " + std::to_string(score);
+			render_text(score_string, 450, 100, 0.8f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+			render_text(grade_string, 580, 180, 1.0f, vec4(1.0f, 1.0f, 1.0f, 1.0f));
+		}
 
-		uloc = glGetUniformLocation(program, "solid_color");		if (uloc > -1) glUniform4fv(uloc, 1, background.color);	// pointer version
-		uloc = glGetUniformLocation(program, "model_matrix");		if (uloc > -1) glUniformMatrix4fv(uloc, 1, GL_TRUE, background.model_matrix);
-
-		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 	}
 	// swap front and back buffers, and display to screen
 	glfwSwapBuffers( window );
@@ -662,8 +1190,10 @@ void reshape( GLFWwindow* window, int width, int height )
 {
 	// set current viewport in pixels (win_x, win_y, win_width, win_height)
 	// viewport: the window area that are affected by rendering 
-	window_size = ivec2(width,height);
-	glViewport( 0, 0, width, height );
+	//window_size = 
+	//window_size = ivec2(width,height);
+	glfwSetWindowSize(window, window_size.x, window_size.y);
+	glViewport( 0, 0, window_size.x, window_size.y );
 }
 
 void print_help()
@@ -909,6 +1439,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 			}
 		}
 		else if (action == GLFW_RELEASE) {
+			character_move_key_waiting[2] = false;
 			character_move_bool[2] = false;
 			if (character_move_key_waiting[3]) {
 				character_move_bool[3] = true;
@@ -927,6 +1458,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		}
 		else if (action == GLFW_RELEASE) {
 			character_move_bool[0] = false;
+			character_move_key_waiting[0] = false;
 			if (character_move_key_waiting[1]) {
 				character_move_bool[1] = true;
 				character_move_key_waiting[1] = false;
@@ -944,6 +1476,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		}
 		else if (action == GLFW_RELEASE) {
 			character_move_bool[1] = false;
+			character_move_key_waiting[1] = false;
 			if (character_move_key_waiting[0]) {
 				character_move_bool[0] = true;
 				character_move_key_waiting[0] = false;
@@ -960,6 +1493,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 			}
 		}
 		else if (action == GLFW_RELEASE) {
+			character_move_key_waiting[3] = false;
 			character_move_bool[3] = false;
 			if (character_move_key_waiting[2]) {
 				character_move_bool[2] = true;
@@ -980,18 +1514,15 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		if(key==GLFW_KEY_ESCAPE||key==GLFW_KEY_Q)	glfwSetWindowShouldClose( window, GL_TRUE );
 		else if(key==GLFW_KEY_H||key==GLFW_KEY_F1)	print_help();
 		else if (key == GLFW_KEY_HOME) {
-			cam.eye = vec3(100, 0, 0);
-			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
+			if (!home_lock) {
+				minimap_reset();
+			}
 		}
 		else if (key == GLFW_KEY_PAUSE) {
 			is_pause = !is_pause;
 		}
-		else if (key == GLFW_KEY_O) {
-			cam.eye = vec3(100, 0, 0);
-			cam.view_matrix = mat4::look_at(cam.eye, cam.at, cam.up);
-		}
 		else if (key == GLFW_KEY_S) {
-			if (!key_lock) {
+			if (!key_lock && scene_number == GAME_SCENE) {
 				key_lock = true;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
@@ -1000,7 +1531,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 			}
 		}
 		else if (key == GLFW_KEY_A) {
-			if (!key_lock) {
+			if (!key_lock && scene_number == GAME_SCENE) {
 				key_lock = true;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
@@ -1009,7 +1540,7 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 			}
 		}
 		else if (key == GLFW_KEY_D) {
-			if (!key_lock) {
+			if (!key_lock && scene_number == GAME_SCENE) {
 				key_lock = true;
 				start_time = float(glfwGetTime());
 				passed_time = 0.0f;
@@ -1020,13 +1551,16 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_SPACE) {
 			engine->play2D(mp3_src, false);
 			//engine->play2D(mp3_back_src, true);
-			if (scene_number == DUCK_SCENE && !cam_closer_moving && !cam_moving) {
+			if (scene_number == DUCK_SCENE && !cam_closer_moving && !cam_moving && !to_next_scene) {
 				to_next_scene = true;
 				to_next_start = float(glfwGetTime());
 			}
 		} 
 		else if (key == GLFW_KEY_Y) {
 			stage_start_time = float(glfwGetTime());
+		}
+		else if (key == GLFW_KEY_R) {
+			game_reset();
 		}
 	}
 }
@@ -1038,12 +1572,14 @@ void mouse( GLFWwindow* window, int button, int action, int mods )
 		dvec2 pos; glfwGetCursorPos(window,&pos.x,&pos.y);
 		vec2 npos = vec2( float(pos.x)/float(window_size.x-1), float(pos.y)/float(window_size.y-1) );
 		if (action == GLFW_PRESS) {
+			home_lock = true;
 			tb.begin(cam.view_matrix, npos.x, npos.y, cam.at);
 			last_pos = npos;
 			now_pos = npos;
 			save_rotation = true;
 		}
 		else if (action == GLFW_RELEASE) {
+			home_lock = false;
 			tb.end();
 			save_diff = pos_diff;
 		}
@@ -1082,6 +1618,8 @@ bool user_init()
 	map.emplace_back(map2);
 	map.emplace_back(map3);
 
+	
+
 
 	// load the mesh
 	unit_cube_vertices = std::move(create_cube_vertices());
@@ -1104,13 +1642,27 @@ bool user_init()
 
 	//add sound source from the sound file
 	mp3_src = engine->addSoundSourceFromFile(mp3_path);
-
 	mp3_src->setDefaultVolume(0.5f);
 
 	mp3_back_src = engine->addSoundSourceFromFile(mp3_back_path);
 	mp3_back_src -> setDefaultVolume(0.2f);
 
-	engine->play2D(mp3_back_src, true);
+	mp3_lobby_src = engine->addSoundSourceFromFile(mp3_lobby_path);
+	mp3_lobby_src->setDefaultVolume(0.2f);
+
+	wav_score_src = engine->addSoundSourceFromFile(wav_score_path);
+	wav_score_src->setDefaultVolume(0.4f);
+
+	mp3_fail_src = engine->addSoundSourceFromFile(mp3_fail_path);
+	mp3_fail_src->setDefaultVolume(0.5f);
+
+	mp3_complete_src = engine->addSoundSourceFromFile(mp3_complete_path);
+	mp3_complete_src->setDefaultVolume(0.5f);
+
+	wav_button_src = engine->addSoundSourceFromFile(wav_button_click_path);
+	wav_button_src->setDefaultVolume(0.f);
+
+	engine->play2D(mp3_lobby_src, true);
 
 	// setup freetype
 	text_init();
@@ -1118,8 +1670,12 @@ bool user_init()
 	return true;
 }
 
+
+
 void user_finalize()
 {
+	engine->stopAllSounds();
+	engine->drop();
 }
 
 int main( int argc, char* argv[] )
@@ -1142,6 +1698,7 @@ int main( int argc, char* argv[] )
 	// enters rendering/event loop
 	for( frame=0; !glfwWindowShouldClose(window); frame++ )
 	{
+		
 		glfwPollEvents();	// polling and processing of events
 		update();			// per-frame update
 		render();			// per-frame render

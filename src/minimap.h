@@ -26,6 +26,7 @@ struct minimap_t {
 	mat4	saving_rotation_matrix;
 
 	void	update(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location, mat4 rotating_matrix, bool rotating, vec2 pos_diff, bool rotation_first);
+	void	reset(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location);
 };
 
 minimap_t create_minimap() {
@@ -56,9 +57,6 @@ inline void minimap_t::update(int stage, float distance, vec3 start_location, ve
 	start_loc = center + start_location * biyul;
 	finish_loc = center + finish_location * biyul;
 	duck_loc = center + duck_location * biyul;
-
-	
-
 	
 	float angle_z = 1.8f * (pos_diff.x);
 	float angle_y = 1.8f * (pos_diff.y);
@@ -157,5 +155,74 @@ inline void minimap_t::update(int stage, float distance, vec3 start_location, ve
 	duck_model_matrix = duck_translate_matrix * rotation_matrix * sphere_scale_matrix;
 }
 
+inline void minimap_t::reset(int stage, float distance, vec3 start_location, vec3 finish_location, vec3 duck_location) {
+	float cube_size = (float)stage * distance;
+	float map_size = radius / 2;
+	float biyul = map_size / cube_size;
 
+	start_loc = center + start_location * biyul;
+	finish_loc = center + finish_location * biyul;
+	duck_loc = center + duck_location * biyul;
+	
+	rotation_matrix =
+	{
+		1, 0, 0, 0,
+		0, 1, 0, 0,
+		0, 0, 1, 0,
+		0, 0, 0, 1
+	};
+	save_rotation_matrix = rotation_matrix;
+	saving_rotation_matrix = rotation_matrix;
+
+	mat4 sphere_scale_matrix =
+	{
+		sphere_radius, 0, 0, 0,
+		0, sphere_radius, 0, 0,
+		0, 0, sphere_radius, 0,
+		0, 0, 0, 1
+	};
+
+	mat4 scale_matrix =
+	{
+		radius, 0, 0, 0,
+		0, radius, 0, 0,
+		0, 0, radius, 0,
+		0, 0, 0, 1
+	};
+
+	mat4 translate_matrix =
+	{
+		1, 0, 0, center.x,
+		0, 1, 0, center.y,
+		0, 0, 1, center.z,
+		0, 0, 0, 1
+	};
+
+	mat4 finish_translate_matrix = {
+		1, 0, 0, finish_loc.x,
+		0, 1, 0, finish_loc.y,
+		0, 0, 1, finish_loc.z,
+		0, 0, 0, 1
+	};
+
+	mat4 duck_translate_matrix = {
+		1, 0, 0, duck_loc.x,
+		0, 1, 0, duck_loc.y,
+		0, 0, 1, duck_loc.z,
+		0, 0, 0, 1
+	};
+
+	mat4 start_translate_matrix = {
+		1, 0, 0, start_loc.x,
+		0, 1, 0, start_loc.y,
+		0, 0, 1, start_loc.z,
+		0, 0, 0, 1
+	};
+
+
+	model_matrix = translate_matrix * rotation_matrix * scale_matrix;
+	start_model_matrix = start_translate_matrix * rotation_matrix * sphere_scale_matrix;
+	finish_model_matrix = finish_translate_matrix * rotation_matrix * sphere_scale_matrix;
+	duck_model_matrix = duck_translate_matrix * rotation_matrix * sphere_scale_matrix;
+}
 #endif

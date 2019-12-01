@@ -80,10 +80,13 @@
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="index.h" />
     <ClInclude Include="minimap.h" />
+    <ClInclude Include="particle.h" />
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="trackball.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\bin\shaders\particle.frag" />
+    <None Include="..\bin\shaders\particle.vert" />
     <None Include="..\bin\shaders\text.frag" />
     <None Include="..\bin\shaders\text.vert" />
     <None Include="..\bin\shaders\trackball.frag" />

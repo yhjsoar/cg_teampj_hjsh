@@ -81,6 +81,9 @@
     <ClInclude Include="background.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="particle.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\bin\shaders\trackball.frag">
@@ -93,6 +96,12 @@
       <Filter>shaders</Filter>
     </None>
     <None Include="..\bin\shaders\text.vert">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\bin\shaders\particle.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="..\bin\shaders\particle.vert">
       <Filter>shaders</Filter>
     </None>
   </ItemGroup>
