@@ -1971,34 +1971,34 @@ bool user_init()
 	wav_button_src->setDefaultVolume(0.f);
 
 	//load image
-	bool duck_key = LoadTextureFromFile("duck_key.png", &duck_key_image_texture, &my_image_width, &my_image_height);
+	bool duck_key = LoadTextureFromFile("../bin/image/duck_key.png", &duck_key_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(duck_key);
 
-	bool spacebar = LoadTextureFromFile("spacebar.png", &spacebar_image_texture, &my_image_width, &my_image_height);
+	bool spacebar = LoadTextureFromFile("../bin/image/spacebar.png", &spacebar_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(spacebar);
 
-	bool cube_key = LoadTextureFromFile("cube_key.png", &cube_key_image_texture, &my_image_width, &my_image_height);
+	bool cube_key = LoadTextureFromFile("../bin/image/cube_key.png", &cube_key_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(cube_key);
 
-	bool start = LoadTextureFromFile("start.png", &start_image_texture, &my_image_width, &my_image_height);
+	bool start = LoadTextureFromFile("../bin/image/start.png", &start_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(start);
 
-	bool option = LoadTextureFromFile("option.png", &option_image_texture, &my_image_width, &my_image_height);
+	bool option = LoadTextureFromFile("../bin/image/option.png", &option_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(option);
 
-	bool end = LoadTextureFromFile("end.png", &end_image_texture, &my_image_width, &my_image_height);
+	bool end = LoadTextureFromFile("../bin/image/end.png", &end_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(end);
 
-	bool how = LoadTextureFromFile("how.png", &how_image_texture, &my_image_width, &my_image_height);
+	bool how = LoadTextureFromFile("../bin/image/how.png", &how_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(how);
 
-	bool restart = LoadTextureFromFile("restart.png", &restart_image_texture, &my_image_width, &my_image_height);
+	bool restart = LoadTextureFromFile("../bin/image/restart.png", &restart_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(restart);
 
-	bool name = LoadTextureFromFile("duckcube.png", &gamename_image_texture, &my_image_width, &my_image_height);
+	bool name = LoadTextureFromFile("../bin/image/duckcube.png", &gamename_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(name);
 
-	bool shift = LoadTextureFromFile("shift.png", &shift_image_texture, &my_image_width, &my_image_height);
+	bool shift = LoadTextureFromFile("../bin/image/shift.png", &shift_image_texture, &my_image_width, &my_image_height);
 	IM_ASSERT(name);
 
 	engine->play2D(mp3_lobby_src, true);
