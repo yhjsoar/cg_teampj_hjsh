@@ -329,7 +329,8 @@ void update()
 }
 
 void guiupdate() {
-
+	ivec2 new_window_size = ivec2(1200,900);
+	glfwGetWindowSize(window, &new_window_size.x,&new_window_size.y);
 	ImGuiWindowFlags window_flags = 0;
 	window_flags |= ImGuiWindowFlags_NoTitleBar;
 	window_flags |= ImGuiWindowFlags_NoScrollbar;
@@ -438,7 +439,8 @@ void guiupdate() {
 	if (choice_start) {
 		ImGui::Begin("Game Start!", &choice_start, window_flags);
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(80, 640), cond);
+		//ImGui::SetWindowPos(ImVec2(90, 640), cond);
+		ImGui::SetWindowPos(ImVec2((float)new_window_size.x / 2 - 550, (float)new_window_size.y - 240), cond);
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 		ImGui::Image((void*)(intptr_t)start_image_texture, ImVec2(500, 90));
 		ImGui::SameLine();
@@ -462,7 +464,8 @@ void guiupdate() {
 	if (choice_option) {
 		ImGui::Begin("Option", &choice_option, window_flags);
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(80, 750), cond);
+		ImGui::SetWindowPos(ImVec2((float)new_window_size.x / 2 - 550, (float)new_window_size.y - 120), cond);
+		//ImGui::SetWindowPos(ImVec2(90, 740), cond);
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 		ImGui::Image((void*)(intptr_t)option_image_texture, ImVec2(500, 90));
 		ImGui::SameLine();
@@ -476,7 +479,8 @@ void guiupdate() {
 	if (choice_how) {
 		ImGui::Begin("How", &choice_how, window_flags);
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(620, 750), cond);
+		ImGui::SetWindowPos(ImVec2((float)new_window_size.x / 2 + 50, (float)new_window_size.y - 240), cond);
+		//ImGui::SetWindowPos(ImVec2(610, 740), cond);
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 		ImGui::Image((void*)(intptr_t)how_image_texture, ImVec2(500, 90));
 		ImGui::SameLine();
@@ -490,7 +494,8 @@ void guiupdate() {
 	if (choice_end) {
 		ImGui::Begin("Game End!", &choice_end, window_flags);
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(620, 640), cond);
+		ImGui::SetWindowPos(ImVec2((float)new_window_size.x / 2 + 50, (float)new_window_size.y - 120), cond);
+		//ImGui::SetWindowPos(ImVec2(610, 640), cond);
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 		ImGui::Image((void*)(intptr_t)end_image_texture, ImVec2(500, 90));
 		ImGui::SameLine();
@@ -504,7 +509,8 @@ void guiupdate() {
 	if (choice_restart) {
 		ImGui::Begin("Restart the Game!", &choice_restart,window_flags);
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(80, 750), cond);
+		ImGui::SetWindowPos(ImVec2((float)new_window_size.x / 2 - 550, (float)new_window_size.y - 120), cond);
+		//ImGui::SetWindowPos(ImVec2(90, 740), cond);
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 		ImGui::Image((void*)(intptr_t)restart_image_texture, ImVec2(500, 90));
 		ImGui::SameLine();
@@ -525,12 +531,13 @@ void guiupdate() {
 	if (choice_finish) {
 		ImGui::Begin("Game Finish!", &choice_finish, window_flags);
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(620, 750), cond);
+		ImGui::SetWindowPos(ImVec2((float)new_window_size.x / 2 + 50, (float)new_window_size.y - 120), cond);
+		//ImGui::SetWindowPos(ImVec2(610, 740), cond);
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
-		ImGui::Image((void*)(intptr_t)end_image_texture, ImVec2(500, 90));
+		ImGui::Image((void*)(intptr_t)end_image_texture, ImVec2(500, 85));
 		ImGui::SameLine();
 		ImGui::Unindent();
-		if (ImGui::InvisibleButton("game_finish", ImVec2(500, 90))) {
+		if (ImGui::InvisibleButton("game_finish", ImVec2(500, 85))) {
 			engine->play2D(wav_button_src, false);
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
@@ -539,7 +546,8 @@ void guiupdate() {
 	if (gamename_window) {
 		window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
 		ImGuiCond cond = 0;
-		ImGui::SetWindowPos(ImVec2(0, 0), cond);
+		ImGui::SetWindowPos(ImVec2((float)window_size.x / 2 - 525, 20), cond);
+		//ImGui::SetWindowPos(ImVec2(75, 20), cond);
 		ImGui::Begin("Game Name!", &gamename_window, window_flags);
 		ImGui::Text("\n");
 		//ImGui::Text("size = %d x %d", my_image_width, my_image_height);
@@ -1856,6 +1864,12 @@ void keyboard( GLFWwindow* window, int key, int scancode, int action, int mods )
 		else if (key == GLFW_KEY_R) {
 			game_reset();
 		}
+		else if (key == GLFW_KEY_O) {
+			show_demo_window = true;
+		}
+		else if (key == GLFW_KEY_P) {
+			control_window = true;
+		}
 	}
 }
 
@@ -2053,6 +2067,10 @@ int main( int argc, char* argv[] )
 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	window_size.x = 1200;
+	window_size.y = 900;
+	glfwSetWindowSize(window, 1200, 900);
 
 	// enters rendering/event loop
 	for( frame=0; !glfwWindowShouldClose(window); frame++ )
